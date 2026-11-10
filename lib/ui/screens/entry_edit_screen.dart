@@ -1,9 +1,14 @@
+import 'dart:io' show Platform;
+
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/vault_entry.dart';
+import '../../services/totp_service.dart';
 import '../../state/vault_state.dart';
 import '../widgets/generator_sheet.dart';
+import 'totp_scan_screen.dart';
 
 /// Create or edit a login entry. Pass [entryId] to edit, or null to create.
 class EntryEditScreen extends StatefulWidget {
@@ -56,6 +61,21 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
     _notes.dispose();
     _totp.dispose();
     super.dispose();
+  }
+
+  // QR scanning needs a camera — only offered on Android/iOS.
+  bool get _canScan => !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
+  Future<void> _scanTotp() async {
+    final config = await Navigator.of(context).push<TotpConfig>(
+      MaterialPageRoute(builder: (_) => const TotpScanScreen()),
+    );
+    if (config == null || !mounted) return;
+    setState(() => _totp.text = config.secret);
+    final who = config.issuer ?? config.account;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(who == null ? 'TOTP secret added' : 'TOTP added for $who'),
+    ));
   }
 
   Future<void> _save() async {
@@ -170,10 +190,19 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
             const SizedBox(height: 12),
             TextFormField(
               controller: _totp,
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'TOTP secret (optional)',
-                prefixIcon: Icon(Icons.timer_outlined),
-                helperText: 'Stored encrypted. Base32 secret, optional.',
+                prefixIcon: const Icon(Icons.timer_outlined),
+                helperText: _canScan
+                    ? 'Stored encrypted. Base32 secret, or scan a QR code.'
+                    : 'Stored encrypted. Base32 secret, optional.',
+                suffixIcon: _canScan
+                    ? IconButton(
+                        tooltip: 'Scan QR code',
+                        icon: const Icon(Icons.qr_code_scanner),
+                        onPressed: _scanTotp,
+                      )
+                    : null,
               ),
             ),
             const SizedBox(height: 12),

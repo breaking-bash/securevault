@@ -9,17 +9,22 @@ import 'package:path_provider/path_provider.dart';
 class AppSettings {
   ThemeMode themeMode;
   int autoLockMinutes; // 0 = never
+  // When true, the vault locks the instant the app is backgrounded/loses focus
+  // (zero idle grace). Takes precedence over [autoLockMinutes].
+  bool autoLockImmediate;
   int clipboardClearSeconds; // 0 = never auto-clear
 
   AppSettings({
     this.themeMode = ThemeMode.system,
     this.autoLockMinutes = 3,
+    this.autoLockImmediate = false,
     this.clipboardClearSeconds = 30,
   });
 
   Map<String, dynamic> toJson() => {
         'themeMode': themeMode.name,
         'autoLockMinutes': autoLockMinutes,
+        'autoLockImmediate': autoLockImmediate,
         'clipboardClearSeconds': clipboardClearSeconds,
       };
 
@@ -29,6 +34,7 @@ class AppSettings {
           orElse: () => ThemeMode.system,
         ),
         autoLockMinutes: (j['autoLockMinutes'] ?? 3) as int,
+        autoLockImmediate: (j['autoLockImmediate'] ?? false) as bool,
         clipboardClearSeconds: (j['clipboardClearSeconds'] ?? 30) as int,
       );
 }

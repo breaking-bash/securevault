@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/vault_state.dart';
+import '../widgets/totp_code_tile.dart';
 import 'entry_edit_screen.dart';
 
 class EntryDetailScreen extends StatefulWidget {
@@ -27,6 +28,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       return const Scaffold(body: SizedBox.shrink());
     }
     final e = match.first;
+    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(
@@ -50,9 +52,9 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
         children: [
-          _FieldCard(
+          const SizedBox(height: 8),
+          _FieldRow(
             label: 'Username / email',
             value: e.username,
             icon: Icons.person_outline,
@@ -60,11 +62,13 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                 ? null
                 : () => _copy(context, e.username, 'Username'),
           ),
-          _FieldCard(
+          _FieldRow(
             label: 'Password',
             value: e.password.isEmpty
                 ? ''
-                : (_showPassword ? e.password : '•' * e.password.length.clamp(0, 24)),
+                : (_showPassword
+                    ? e.password
+                    : '•' * e.password.length.clamp(0, 24)),
             icon: Icons.lock_outline,
             monospace: _showPassword,
             trailing: e.password.isEmpty
@@ -80,38 +84,42 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                 ? null
                 : () => _copy(context, e.password, 'Password', sensitive: true),
           ),
-          _FieldCard(
+          _FieldRow(
             label: 'URL',
             value: e.url,
             icon: Icons.link,
             onCopy: e.url.isEmpty ? null : () => _copy(context, e.url, 'URL'),
           ),
-          if ((e.totp ?? '').isNotEmpty)
-            _FieldCard(
-              label: 'TOTP secret',
-              value: _showPassword ? e.totp! : '••••••••',
-              icon: Icons.timer_outlined,
-              onCopy: () => _copy(context, e.totp!, 'TOTP secret', sensitive: true),
+          if ((e.totp ?? '').isNotEmpty) ...[
+            const Divider(indent: 16, endIndent: 16),
+            TotpCodeTile(
+              stored: e.totp!,
+              onCopy: (code) => _copy(context, code, 'Code', sensitive: true),
             ),
-          _FieldCard(
+          ],
+          _FieldRow(
             label: 'Folder',
             value: state.folderName(e.folderId),
             icon: Icons.folder_outlined,
           ),
           if (e.notes.isNotEmpty)
-            _FieldCard(
+            _FieldRow(
               label: 'Notes',
               value: e.notes,
               icon: Icons.notes,
             ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 16),
           Padding(
-            padding: const EdgeInsets.all(8),
+            padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
               'Updated ${_fmt(e.updatedAt)} · Created ${_fmt(e.createdAt)}',
-              style: Theme.of(context).textTheme.bodySmall,
+              style: Theme.of(context)
+                  .textTheme
+                  .bodySmall
+                  ?.copyWith(color: scheme.onSurfaceVariant),
             ),
           ),
+          const SizedBox(height: 24),
         ],
       ),
     );
@@ -150,7 +158,9 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
 
-class _FieldCard extends StatelessWidget {
+/// A single detail row: leading outline icon, label + value, optional actions,
+/// separated from neighbours by a thin full-width divider (minimalist style).
+class _FieldRow extends StatelessWidget {
   final String label;
   final String value;
   final IconData icon;
@@ -158,7 +168,7 @@ class _FieldCard extends StatelessWidget {
   final Widget? trailing;
   final bool monospace;
 
-  const _FieldCard({
+  const _FieldRow({
     required this.label,
     required this.value,
     required this.icon,
@@ -172,37 +182,43 @@ class _FieldCard extends StatelessWidget {
     if (value.isEmpty && onCopy == null && trailing == null) {
       return const SizedBox.shrink();
     }
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        child: Row(
-          children: [
-            Icon(icon, size: 22),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(label,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.primary)),
-                  const SizedBox(height: 2),
-                  SelectableText(
-                    value.isEmpty ? '—' : value,
-                    style: TextStyle(
-                      fontFamily: monospace ? 'monospace' : null,
-                      fontSize: 15,
+    final scheme = Theme.of(context).colorScheme;
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+          child: Row(
+            children: [
+              Icon(icon, size: 22, color: scheme.onSurfaceVariant),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(label,
+                        style: Theme.of(context)
+                            .textTheme
+                            .labelMedium
+                            ?.copyWith(color: scheme.onSurfaceVariant)),
+                    const SizedBox(height: 2),
+                    SelectableText(
+                      value.isEmpty ? '—' : value,
+                      style: TextStyle(
+                        fontFamily: monospace ? 'monospace' : null,
+                        fontSize: 15,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            if (trailing != null) trailing!,
-            if (onCopy != null)
-              IconButton(icon: const Icon(Icons.copy), onPressed: onCopy),
-          ],
+              if (trailing != null) trailing!,
+              if (onCopy != null)
+                IconButton(icon: const Icon(Icons.copy), onPressed: onCopy),
+            ],
+          ),
         ),
-      ),
+        const Divider(indent: 16, endIndent: 16),
+      ],
     );
   }
 }

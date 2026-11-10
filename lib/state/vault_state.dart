@@ -10,6 +10,7 @@ import '../models/folder.dart';
 import '../models/secure_note.dart';
 import '../models/vault_entry.dart';
 import '../services/account_service.dart';
+import '../services/biometric_service.dart';
 import '../services/crypto_service.dart';
 import '../services/database_service.dart';
 import '../services/settings_service.dart';
@@ -30,6 +31,12 @@ class VaultState extends ChangeNotifier {
   LocalAccount? _account;
   SecretKey? _key; // in-memory only
   bool _unlocked = false;
+
+  // Held in memory ONLY while unlocked so the user can opt into biometric
+  // unlock from Settings (we need the plaintext to seal it in the OS keystore).
+  // Cleared on lock(); never persisted by VaultState itself.
+  String? _sessionMasterPassword;
+  String? get sessionMasterPassword => _sessionMasterPassword;
 
   LocalAccount? get account => _account;
   bool get unlocked => _unlocked;
@@ -87,6 +94,7 @@ class VaultState extends ChangeNotifier {
     _account = account;
     _key = key;
     _unlocked = true;
+    _sessionMasterPassword = masterPassword;
 
     await _db.open(await _accounts.vaultPathFor(account.id));
     await _loadAll();
@@ -100,6 +108,7 @@ class VaultState extends ChangeNotifier {
     _clipboardTimer?.cancel();
     _key = null;
     _unlocked = false;
+    _sessionMasterPassword = null;
     entries.clear();
     notes.clear();
     folders.clear();
@@ -340,9 +349,51 @@ class VaultState extends ChangeNotifier {
     await _accounts.updateAccount(updated);
     _account = updated;
     _key = newKey;
+    _sessionMasterPassword = newPassword;
     accountsList = await _accounts.listAccounts();
+
+    // Keep the biometric-gated keystore in sync if this account opted in.
+    if (await BiometricService.instance.hasStoredSecret(updated.id)) {
+      await BiometricService.instance.storeSecret(updated.id, newPassword);
+    }
+
     notifyListeners();
     return true;
+  }
+
+  // -------------------------------------------------------------- biometrics
+  /// Enable biometric unlock for the current account by sealing the master
+  /// password into the biometric-gated OS keystore. Requires an active session
+  /// (so we have the plaintext). Returns true on success.
+  Future<bool> enableBiometricForCurrentAccount() async {
+    final acc = _account;
+    final pw = _sessionMasterPassword;
+    if (acc == null || pw == null) return false;
+    final ok = await BiometricService.instance.authenticate(
+        reason: 'Confirm your identity to enable biometric unlock');
+    if (!ok) return false;
+    await BiometricService.instance.storeSecret(acc.id, pw);
+    notifyListeners();
+    return true;
+  }
+
+  /// Disable biometric unlock for the current account (deletes the stored secret).
+  Future<void> disableBiometricForCurrentAccount() async {
+    final acc = _account;
+    if (acc == null) return;
+    await BiometricService.instance.deleteSecret(acc.id);
+    notifyListeners();
+  }
+
+  /// Attempt a biometric unlock for [account]: prompt for biometrics, retrieve
+  /// the stored master password, then unlock normally. Returns true on success.
+  Future<bool> unlockWithBiometrics(LocalAccount account) async {
+    final pw = await BiometricService.instance.retrieveSecret(
+      account.id,
+      reason: 'Unlock ${account.name}',
+    );
+    if (pw == null) return false;
+    return unlock(account: account, masterPassword: pw);
   }
 
   // ---------------------------------------------------------------- settings
@@ -383,7 +434,11 @@ class VaultState extends ChangeNotifier {
 
   void _restartLockTimer() {
     _lockTimer?.cancel();
-    if (_unlocked && settings.autoLockMinutes > 0) {
+    // "Immediately" locks on background, not on an idle timer, so no timer is
+    // armed for it. Otherwise arm the idle-timeout timer when a limit is set.
+    if (_unlocked &&
+        !settings.autoLockImmediate &&
+        settings.autoLockMinutes > 0) {
       _lockTimer = Timer(
         Duration(minutes: settings.autoLockMinutes),
         () => lock(),
@@ -391,9 +446,11 @@ class VaultState extends ChangeNotifier {
     }
   }
 
-  /// Lock immediately when the app is backgrounded/hidden (if unlocked).
+  /// Called when the app leaves the foreground. With "Immediately" selected the
+  /// vault locks at once (zero idle grace); otherwise the idle-timeout timer
+  /// keeps running in the background and locks when it elapses.
   void onAppBackgrounded() {
-    if (_unlocked) lock();
+    if (_unlocked && settings.autoLockImmediate) lock();
   }
 
   @override

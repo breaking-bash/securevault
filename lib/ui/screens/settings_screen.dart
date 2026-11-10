@@ -1,16 +1,70 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../services/biometric_service.dart';
 import '../../services/settings_service.dart';
 import '../../state/vault_state.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _bioAvailable = false;
+  bool _bioEnabled = false;
+  bool _bioLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadBiometric();
+  }
+
+  Future<void> _loadBiometric() async {
+    final account = context.read<VaultState>().account;
+    final available = await BiometricService.instance.isAvailable();
+    final enabled = account == null
+        ? false
+        : await BiometricService.instance.hasStoredSecret(account.id);
+    if (!mounted) return;
+    setState(() {
+      _bioAvailable = available;
+      _bioEnabled = enabled;
+      _bioLoading = false;
+    });
+  }
+
+  Future<void> _toggleBiometric(bool value) async {
+    final state = context.read<VaultState>();
+    if (value) {
+      final ok = await state.enableBiometricForCurrentAccount();
+      if (!mounted) return;
+      if (ok) {
+        setState(() => _bioEnabled = true);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Biometric unlock enabled for this account')));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+            content: Text('Could not enable biometric unlock')));
+      }
+    } else {
+      await state.disableBiometricForCurrentAccount();
+      if (!mounted) return;
+      setState(() => _bioEnabled = false);
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Biometric unlock disabled; stored secret removed')));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<VaultState>();
     final s = state.settings;
+    // "Immediately" is represented by -1 in the auto-lock dropdown.
+    final autoLockValue = s.autoLockImmediate ? -1 : s.autoLockMinutes;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -27,6 +81,7 @@ class SettingsScreen extends StatelessWidget {
                 state.updateSettings(AppSettings(
                   themeMode: m,
                   autoLockMinutes: s.autoLockMinutes,
+                  autoLockImmediate: s.autoLockImmediate,
                   clipboardClearSeconds: s.clipboardClearSeconds,
                 ));
               },
@@ -40,21 +95,21 @@ class SettingsScreen extends StatelessWidget {
           const _SectionHeader('Security'),
           ListTile(
             leading: const Icon(Icons.timer_outlined),
-            title: const Text('Auto-lock after inactivity'),
-            subtitle: Text(s.autoLockMinutes == 0
-                ? 'Never (not recommended)'
-                : '${s.autoLockMinutes} minute(s)'),
+            title: const Text('Auto-lock'),
+            subtitle: Text(_autoLockLabel(s)),
             trailing: DropdownButton<int>(
-              value: s.autoLockMinutes,
+              value: autoLockValue,
               onChanged: (v) {
                 if (v == null) return;
                 state.updateSettings(AppSettings(
                   themeMode: s.themeMode,
-                  autoLockMinutes: v,
+                  autoLockImmediate: v == -1,
+                  autoLockMinutes: v == -1 ? 0 : v,
                   clipboardClearSeconds: s.clipboardClearSeconds,
                 ));
               },
               items: const [
+                DropdownMenuItem(value: -1, child: Text('Immediately')),
                 DropdownMenuItem(value: 0, child: Text('Never')),
                 DropdownMenuItem(value: 1, child: Text('1 min')),
                 DropdownMenuItem(value: 3, child: Text('3 min')),
@@ -63,6 +118,7 @@ class SettingsScreen extends StatelessWidget {
               ],
             ),
           ),
+          _buildBiometricTile(context),
           ListTile(
             leading: const Icon(Icons.content_paste_off_outlined),
             title: const Text('Clear clipboard after copy'),
@@ -76,6 +132,7 @@ class SettingsScreen extends StatelessWidget {
                 state.updateSettings(AppSettings(
                   themeMode: s.themeMode,
                   autoLockMinutes: s.autoLockMinutes,
+                  autoLockImmediate: s.autoLockImmediate,
                   clipboardClearSeconds: v,
                 ));
               },
@@ -113,6 +170,39 @@ class SettingsScreen extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  String _autoLockLabel(AppSettings s) {
+    if (s.autoLockImmediate) return 'Immediately when backgrounded';
+    if (s.autoLockMinutes == 0) return 'Never (not recommended)';
+    return 'After ${s.autoLockMinutes} minute(s) idle';
+  }
+
+  Widget _buildBiometricTile(BuildContext context) {
+    if (_bioLoading) {
+      return const ListTile(
+        leading: Icon(Icons.fingerprint),
+        title: Text('Biometric unlock'),
+        subtitle: Text('Checking availability…'),
+      );
+    }
+    if (!_bioAvailable) {
+      return const ListTile(
+        leading: Icon(Icons.fingerprint),
+        title: Text('Biometric unlock'),
+        subtitle: Text('Not available on this device'),
+        enabled: false,
+      );
+    }
+    return SwitchListTile(
+      secondary: const Icon(Icons.fingerprint),
+      title: const Text('Biometric unlock'),
+      subtitle: const Text(
+          'Unlock with fingerprint/face. Master password stored in the '
+          'biometric-gated OS keystore.'),
+      value: _bioEnabled,
+      onChanged: _toggleBiometric,
     );
   }
 

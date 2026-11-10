@@ -40,8 +40,44 @@ Everything is stored **only on your device** — there is no server, no cloud, n
 **Security UX**
 - **Copy to clipboard** with **automatic clipboard clearing** after a configurable timeout (default 30s) for sensitive values.
 - **Show / hide** password toggles.
-- **Auto-lock** after a configurable idle timeout (default 3 min) **and** automatically when the app is minimised/backgrounded — re-entry requires the master password.
-- Material 3 UI with **light / dark / system** themes.
+- **Auto-lock** with selectable behaviour: **Immediately** (locks the instant the app is backgrounded/loses focus), **Never**, or an idle timeout of **1 / 3 / 5 / 15 minutes**. Re-entry requires the master password (or biometrics, if enabled).
+- **Biometric / fingerprint unlock** (opt-in, per account) — unlock with your device fingerprint/face while keeping the zero-knowledge model.
+- **Two-factor (TOTP)** — scan an `otpauth://` **QR code** to store a secret, then view a **live RFC 6238 code with a countdown** on the entry.
+- Minimalist **Material 3** UI with **light / dark / system** themes.
+
+---
+
+## What's new in this release
+
+### 1. Auto-lock "Immediately"
+The auto-lock setting (Settings → Security → *Auto-lock*) now offers **Immediately** in addition to *Never / 1 / 3 / 5 / 15 min*.
+- **Immediately** — the vault locks the moment the app is backgrounded, minimised or loses focus (zero idle grace). No idle timer is used.
+- The timed options keep their previous behaviour: the idle-timeout timer runs (including while backgrounded) and locks the vault when it elapses.
+- The choice is persisted in the app settings file and honoured by `VaultState`.
+
+### 2. Fingerprint / biometric unlock
+Opt in per account under **Settings → Security → Biometric unlock** (only shown on devices that support biometrics).
+
+**How it works (zero-knowledge preserved):**
+- When you enable it, SecureVault runs a biometric prompt (`local_auth`) and then seals **your master password** into the platform's **biometric-gated, hardware-backed keystore** — on Android this is `EncryptedSharedPreferences` via `flutter_secure_storage`. The master password is therefore still **never written to app storage in plaintext** and never leaves the device.
+- On the next launch, the unlock screen offers **"Unlock with biometrics"**. A successful biometric check releases the stored master password from the keystore, which is then used to derive the key exactly as a manual unlock would. The derived key still lives only in RAM.
+- **Master-password fallback is always available** — biometrics never replace the password, they just unlock it.
+- **Disabling** biometric unlock (toggle off, or it is unavailable) **deletes the stored secret** from the keystore. Changing the master password automatically re-seals the new one if biometrics are enabled.
+
+**Security tradeoff (read this):** enabling biometric unlock trades a small amount of security for convenience. Anyone who can satisfy the device's biometric/credential check (a registered fingerprint/face, or the device PIN/pattern used as the secure fallback) can unlock that account **without** knowing the master password. The secret is protected by the OS keystore and is only as strong as your device lock. If you want the strongest posture, leave biometrics **off** and unlock with the master password only. Biometrics are **off by default**.
+
+### 3. TOTP QR-code scanner + live codes
+- When adding/editing a login, the **TOTP secret** field has a **Scan QR** button (Android/iOS). It opens the camera (`mobile_scanner`), reads an `otpauth://totp/...` QR code, parses the base32 secret (and issuer/account/digits/period) and fills in the secret. The secret is stored **encrypted** like every other field.
+- On the entry's detail screen, a **live 6-digit code** (RFC 6238) is shown with a **countdown ring** and refreshes automatically every period; tap to copy.
+- **Manual entry still works everywhere** — you can type/paste a base32 secret, and on desktop (no camera) the field falls back to manual entry gracefully.
+- Android adds the **`CAMERA`** permission (used only for scanning); it is requested at runtime by the scanner and is declared `android:required="false"` so camera-less devices still install.
+
+### 4. Minimalist UI redesign
+The whole app was restyled into a clean, Bitwarden-inspired Material 3 look:
+- A **3-tab bottom navigation**: **Vault · Generator · Settings**.
+- The Vault tab uses a large bold title, a search row, a **"Vault: All"** filter row with an overflow menu (manage folders / switch account / lock), and **grouped sections with uppercase headers and counts** — **TYPES** (Login, Secure note), **FOLDERS**, and **NO FOLDER** — rendered as simple **full-width divider-separated rows** (monochrome outline icon + label, trailing count + chevron) instead of heavy cards.
+- Generous whitespace, a single blue accent used sparingly, and a floating **+** button. The same clean aesthetic is applied across unlock, entry detail/edit, generator and settings.
+- **No functionality was removed** — logins, secure notes, folders, multi-account, search, the generator, clipboard auto-clear and master-password change all remain.
 
 ---
 

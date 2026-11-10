@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/account.dart';
+import '../../services/biometric_service.dart';
 import '../../state/vault_state.dart';
 import 'create_account_screen.dart';
 
@@ -20,10 +21,55 @@ class _UnlockScreenState extends State<UnlockScreen> {
   bool _busy = false;
   String? _error;
 
+  bool _bioAvailable = false;
+  bool _bioEnabledForSelected = false;
+  bool _bioAutoPrompted = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _initBiometric();
+  }
+
   @override
   void dispose() {
     _pw.dispose();
     super.dispose();
+  }
+
+  Future<void> _initBiometric() async {
+    final available = await BiometricService.instance.isAvailable();
+    if (!mounted) return;
+    setState(() => _bioAvailable = available);
+    if (available) await _refreshBioForSelected(autoPrompt: true);
+  }
+
+  Future<void> _refreshBioForSelected({bool autoPrompt = false}) async {
+    final account = _selected ?? context.read<VaultState>().accountsList.first;
+    final enabled =
+        await BiometricService.instance.hasStoredSecret(account.id);
+    if (!mounted) return;
+    setState(() => _bioEnabledForSelected = enabled);
+    // Offer the biometric prompt automatically the first time, if enabled.
+    if (enabled && autoPrompt && !_bioAutoPrompted) {
+      _bioAutoPrompted = true;
+      _unlockBiometric();
+    }
+  }
+
+  Future<void> _unlockBiometric() async {
+    final state = context.read<VaultState>();
+    final account = _selected ?? state.accountsList.first;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final ok = await state.unlockWithBiometrics(account);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      if (!ok) _error = 'Biometric unlock failed — use your master password';
+    });
   }
 
   Future<void> _unlock() async {
@@ -79,8 +125,11 @@ class _UnlockScreenState extends State<UnlockScreen> {
                               child: Text(a.name),
                             ))
                         .toList(),
-                    onChanged: (id) => setState(() => _selected =
-                        state.accountsList.firstWhere((a) => a.id == id)),
+                    onChanged: (id) {
+                      setState(() => _selected =
+                          state.accountsList.firstWhere((a) => a.id == id));
+                      _refreshBioForSelected();
+                    },
                   )
                 else
                   Card(
@@ -117,6 +166,14 @@ class _UnlockScreenState extends State<UnlockScreen> {
                       : const Icon(Icons.lock_open),
                   label: Text(_busy ? 'Unlocking…' : 'Unlock'),
                 ),
+                if (_bioAvailable && _bioEnabledForSelected) ...[
+                  const SizedBox(height: 8),
+                  OutlinedButton.icon(
+                    onPressed: _busy ? null : _unlockBiometric,
+                    icon: const Icon(Icons.fingerprint),
+                    label: const Text('Unlock with biometrics'),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 TextButton.icon(
                   onPressed: () => Navigator.of(context).push(
