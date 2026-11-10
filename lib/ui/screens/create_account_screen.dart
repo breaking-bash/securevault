@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../services/account_service.dart';
 import '../../services/password_generator.dart';
 import '../../state/vault_state.dart';
 
@@ -20,6 +21,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   bool _obscure = true;
   bool _busy = false;
   bool _ack = false;
+  String? _nameError;
 
   @override
   void dispose() {
@@ -37,15 +39,38 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       ));
       return;
     }
-    setState(() => _busy = true);
+    setState(() {
+      _busy = true;
+      _nameError = null;
+    });
     try {
       await context.read<VaultState>().createAccountAndUnlock(
             name: _name.text,
             masterPassword: _pw.text,
           );
-    } finally {
+    } on AccountExistsException {
+      // BUG 1: reject duplicate usernames with a clear inline error.
+      if (mounted) {
+        setState(() {
+          _busy = false;
+          _nameError = 'An account with this name already exists.';
+        });
+      }
+      return;
+    } catch (_) {
       if (mounted) setState(() => _busy = false);
+      return;
     }
+
+    // BUG 2: on success, clear the form and navigate away (replace) so the
+    // signup page — with its entered values — is removed from the back stack.
+    if (!mounted) return;
+    _name.clear();
+    _pw.clear();
+    _confirm.clear();
+    // The GateScreen at the root reactively shows the unlocked HomeScreen, so
+    // popping the pushed signup route reveals it with no stale field values.
+    Navigator.of(context).popUntil((r) => r.isFirst);
   }
 
   @override
@@ -71,9 +96,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                   const SizedBox(height: 24),
                   TextFormField(
                     controller: _name,
-                    decoration: const InputDecoration(
+                    onChanged: (_) {
+                      if (_nameError != null) setState(() => _nameError = null);
+                    },
+                    decoration: InputDecoration(
                       labelText: 'Vault / account name',
-                      prefixIcon: Icon(Icons.badge_outlined),
+                      prefixIcon: const Icon(Icons.badge_outlined),
+                      errorText: _nameError,
                     ),
                     validator: (v) =>
                         (v == null || v.trim().isEmpty) ? 'Enter a name' : null,

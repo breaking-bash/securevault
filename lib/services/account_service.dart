@@ -7,6 +7,15 @@ import 'package:path_provider/path_provider.dart';
 import '../models/account.dart';
 import 'crypto_service.dart';
 
+/// Thrown by [AccountService.createAccount] when an account with the same
+/// (case-insensitive, trimmed) username already exists on this device.
+class AccountExistsException implements Exception {
+  final String username;
+  AccountExistsException(this.username);
+  @override
+  String toString() => 'An account named "$username" already exists.';
+}
+
 /// Manages the set of local accounts on this device.
 ///
 /// Accounts are listed in `<appSupport>/securevault/accounts.json`. That index
@@ -62,6 +71,17 @@ class AccountService {
     required String masterPassword,
   }) async {
     final crypto = CryptoService.instance;
+
+    // Enforce unique usernames per device (case-insensitive, trimmed) so the
+    // same username cannot create a second/duplicate vault.
+    final desiredName = name.trim().isEmpty ? 'My Vault' : name.trim();
+    final existing = await listAccounts();
+    final clash = existing.any(
+        (a) => a.name.trim().toLowerCase() == desiredName.toLowerCase());
+    if (clash) {
+      throw AccountExistsException(desiredName);
+    }
+
     final rand = crypto.randomBase64(6).replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
     final id = '${DateTime.now().microsecondsSinceEpoch}_$rand';
     final salt = crypto.randomBytes(16);
@@ -70,7 +90,7 @@ class AccountService {
 
     final account = LocalAccount(
       id: id,
-      name: name.trim().isEmpty ? 'My Vault' : name.trim(),
+      name: desiredName,
       kdfSalt: base64Encode(salt),
       kdfMemory: CryptoService.kdfMemoryKiB,
       kdfIterations: CryptoService.kdfIterations,
