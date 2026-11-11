@@ -19,7 +19,7 @@ The monorepo lives alongside the existing Flutter app (repo root: `lib/`,
 | `crates/key-manager` | Lock/unlock, wrapped vault keys, rotation | Implemented per ADR-0001; not independently reviewed |
 | `crates/vault-engine` | Item storage **trait** | Interface only |
 | `crates/{storage,sync}-engine`, `password-generator`, `platform-security` | Future | Empty |
-| `backend/` | Go REST API | Health endpoint, config |
+| `backend/` | Go REST API | Health, config, bearer-auth sync API (`GET/PUT/DELETE /v1/vaults/{vault}/items`) with optimistic concurrency, tombstones, cursor feed, role checks. In-memory store only; enabled with `SECUREVAULT_DEV_SYNC=1` + `SECUREVAULT_DEV_TOKEN` (>=32 chars). No OPAQUE login or Postgres store yet. |
 | `backend/migrations` | PostgreSQL schema (golang-migrate format) | Draft schema |
 | `infrastructure/` | Docker dev DB; Terraform/monitoring placeholders | Dev Postgres only |
 
