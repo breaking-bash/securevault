@@ -89,7 +89,10 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                 child: Text(header.toUpperCase(),
                     style: Theme.of(context).textTheme.labelMedium),
               ),
-            ...visible,
+            for (var i = 0; i < visible.length; i++) ...[
+              if (i > 0) const Divider(height: 0, indent: 54),
+              visible[i],
+            ],
           ],
         ),
       ),
@@ -172,30 +175,25 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       body: ListView(
         children: [
           Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
-            child: Row(
+            padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+            child: Column(
               children: [
                 TypeTile(
                   icon: tpl.icon,
                   color: tpl.color,
-                  size: 56,
+                  size: 76,
                   url: e.type == EntryType.login ? e.url : null,
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(e.title.isEmpty ? '(untitled)' : e.title,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.w700)),
-                      Text(tpl.label,
-                          style: TextStyle(color: scheme.onSurfaceVariant)),
-                    ],
-                  ),
-                ),
+                const SizedBox(height: 14),
+                Text(e.title.isEmpty ? '(untitled)' : e.title,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context)
+                        .textTheme
+                        .headlineSmall
+                        ?.copyWith(fontWeight: FontWeight.w700)),
+                const SizedBox(height: 2),
+                Text(tpl.label,
+                    style: TextStyle(color: scheme.onSurfaceVariant)),
               ],
             ),
           ),

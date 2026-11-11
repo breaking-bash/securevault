@@ -131,9 +131,30 @@ class _VaultTabState extends State<_VaultTab> {
       body: CustomScrollView(
         controller: _scroll,
         slivers: [
-          SliverAppBar.large(
-            title: Text(state.account?.name ?? 'Vault'),
-            actions: [_menu(context, state)],
+          SliverAppBar(
+            pinned: true,
+            titleSpacing: 16,
+            title: Row(children: [
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: Theme.of(context).colorScheme.primary,
+                child: Text(
+                  (state.account?.name ?? 'V').characters.first.toUpperCase(),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(state.account?.name ?? 'Vault',
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                        fontSize: 18, fontWeight: FontWeight.w700)),
+              ),
+            ]),
+            actions: [_menu(context, state), const SizedBox(width: 4)],
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -143,6 +164,14 @@ class _VaultTabState extends State<_VaultTab> {
                 onChanged: (v) => setState(() => _query = v),
                 decoration: InputDecoration(
                   hintText: 'Search',
+                  filled: true,
+                  fillColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(28),
+                      borderSide: BorderSide.none),
+                  enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(28),
+                      borderSide: BorderSide.none),
                   prefixIcon: const Icon(Icons.search),
                   suffixIcon: _query.isEmpty
                       ? null
@@ -296,10 +325,10 @@ class _VaultTabState extends State<_VaultTab> {
       ],
       if (show('categories')) _SectionHeader('CATEGORIES', typeCount),
       if (show('categories'))
+      SliverToBoxAdapter(child: _Group(children: [
       for (final t in ItemTemplates.pickerOrder)
         if (state.activeEntries.any((e) => e.type == t))
-          SliverToBoxAdapter(
-            child: _VaultRow(
+            _VaultRow(
               icon: ItemTemplates.of(t).icon,
               color: ItemTemplates.of(t).color,
               label: ItemTemplates.of(t).label,
@@ -311,10 +340,8 @@ class _VaultTabState extends State<_VaultTab> {
                     entryType: t),
               )),
             ),
-          ),
-      if (show('categories') && state.notes.isNotEmpty)
-        SliverToBoxAdapter(
-          child: _VaultRow(
+      if (state.notes.isNotEmpty)
+          _VaultRow(
             icon: Icons.sticky_note_2_outlined,
             color: ItemTemplates.noteColor,
             label: 'Secure Note',
@@ -324,14 +351,13 @@ class _VaultTabState extends State<_VaultTab> {
                   title: 'Secure Note', filter: GroupFilter.notes),
             )),
           ),
-        ),
+      ])),
       if (show('folders')) _SectionHeader('FOLDERS', state.folders.length),
-      if (show('folders'))
-      ...state.folders.map((f) {
+      if (show('folders') && state.folders.isNotEmpty)
+      SliverToBoxAdapter(child: _Group(children: state.folders.map((f) {
         final count = state.activeEntries.where((e) => e.folderId == f.id).length +
             state.notes.where((n) => n.folderId == f.id).length;
-        return SliverToBoxAdapter(
-          child: _VaultRow(
+        return _VaultRow(
             icon: Icons.folder_outlined,
             color: const Color(0xFF6B7A90),
             label: f.name,
@@ -340,9 +366,8 @@ class _VaultTabState extends State<_VaultTab> {
               builder: (_) => GroupListScreen(
                   title: f.name, filter: GroupFilter.folder, folderId: f.id),
             )),
-          ),
         );
-      }),
+      }).toList())),
       if (show('noFolder')) _SectionHeader('NO FOLDER', noFolderCount),
       if (show('noFolder') && noFolderCount == 0)
         const SliverToBoxAdapter(
@@ -351,11 +376,11 @@ class _VaultTabState extends State<_VaultTab> {
             child: Text('Nothing here yet — tap New Item to add one.'),
           ),
         ),
-      if (show('noFolder'))
-      SliverList.list(children: [
+      if (show('noFolder') && noFolderCount > 0)
+      SliverToBoxAdapter(child: _Group(children: [
         ...noFolderEntries.map((e) => _EntryRow(entry: e)),
         ...noFolderNotes.map((n) => _NoteRow(note: n)),
-      ]),
+      ])),
     ];
   }
 
@@ -375,10 +400,13 @@ class _VaultTabState extends State<_VaultTab> {
     }
     return [
       if (entries.isNotEmpty) _SectionHeader('ITEMS', entries.length),
-      SliverList.list(
-          children: entries.map((e) => _EntryRow(entry: e)).toList()),
+      if (entries.isNotEmpty)
+        SliverToBoxAdapter(
+            child: _Group(children: entries.map((e) => _EntryRow(entry: e)).toList())),
       if (notes.isNotEmpty) _SectionHeader('SECURE NOTES', notes.length),
-      SliverList.list(children: notes.map((n) => _NoteRow(note: n)).toList()),
+      if (notes.isNotEmpty)
+        SliverToBoxAdapter(
+            child: _Group(children: notes.map((n) => _NoteRow(note: n)).toList())),
     ];
   }
 }
@@ -422,6 +450,31 @@ class _SectionHeader extends StatelessWidget {
   }
 }
 
+/// Rounded inset card that joins rows with hairline dividers (1Password style).
+class _Group extends StatelessWidget {
+  final List<Widget> children;
+  const _Group({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Material(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) const Divider(height: 0, indent: 68),
+            children[i],
+          ],
+        ]),
+      ),
+    );
+  }
+}
+
 /// A group/type/folder row: leading outline icon, label, trailing count + chevron.
 class _VaultRow extends StatelessWidget {
   final IconData icon;
@@ -440,9 +493,7 @@ class _VaultRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Column(
-      children: [
-        ListTile(
+    return ListTile(
           leading: TypeTile(icon: icon, color: color, size: 36),
           title: Text(label),
           trailing: Row(
@@ -454,9 +505,6 @@ class _VaultRow extends StatelessWidget {
             ],
           ),
           onTap: onTap,
-        ),
-        const Divider(height: 0, indent: 16, endIndent: 16),
-      ],
     );
   }
 }
@@ -469,9 +517,7 @@ class _EntryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.read<VaultState>();
-    return Column(
-      children: [
-        ListTile(
+    return ListTile(
           leading: TypeTile(
               icon: ItemTemplates.of(entry.type).icon,
               color: ItemTemplates.of(entry.type).color,
@@ -497,9 +543,6 @@ class _EntryRow extends StatelessWidget {
                 ),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => EntryDetailScreen(entryId: entry.id))),
-        ),
-        const Divider(height: 0, indent: 16, endIndent: 16),
-      ],
     );
   }
 }
@@ -511,9 +554,7 @@ class _NoteRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        ListTile(
+    return ListTile(
           leading: const TypeTile(
               icon: Icons.sticky_note_2_outlined,
               color: ItemTemplates.noteColor),
@@ -525,9 +566,6 @@ class _NoteRow extends StatelessWidget {
           trailing: const Icon(Icons.chevron_right),
           onTap: () => Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => NoteEditScreen(noteId: note.id))),
-        ),
-        const Divider(height: 0, indent: 16, endIndent: 16),
-      ],
     );
   }
 }

@@ -9,9 +9,9 @@ ThemeData _base(Brightness brightness) {
     brightness: brightness,
   ).copyWith(
     primary: isLight ? const Color(0xFF0572EC) : const Color(0xFF4C9AFF),
-    surface: isLight ? const Color(0xFFF4F6FA) : const Color(0xFF0E1726),
+    surface: isLight ? const Color(0xFFEFF2F7) : const Color(0xFF0B1424),
     surfaceContainerHighest:
-        isLight ? const Color(0xFFFFFFFF) : const Color(0xFF1A2740),
+        isLight ? const Color(0xFFFFFFFF) : const Color(0xFF16233A),
   );
   return ThemeData(
     useMaterial3: true,
