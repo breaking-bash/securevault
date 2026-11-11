@@ -25,6 +25,7 @@ class NewItemScreen extends StatefulWidget {
 
 class _NewItemScreenState extends State<NewItemScreen> {
   String _q = '';
+  bool _expanded = true;
 
   static const _featured = <EntryType?>[
     EntryType.login,
@@ -96,26 +97,44 @@ class _NewItemScreenState extends State<NewItemScreen> {
               children: [for (final c in f) _FeaturedCard(c, () => _open(c))],
             ),
           if (f.isNotEmpty && m.isNotEmpty) const SizedBox(height: 20),
-          if (m.isNotEmpty)
-            Card(
-              margin: EdgeInsets.zero,
-              clipBehavior: Clip.antiAlias,
-              child: Column(
-                children: [
-                  for (var i = 0; i < m.length; i++) ...[
-                    if (i > 0) const Divider(height: 0, indent: 68),
-                    ListTile(
-                      leading: TypeTile(
-                          icon: m[i].icon, color: m[i].color, size: 36),
-                      title: Text(m[i].label),
-                      trailing: const Icon(Icons.add),
-                      onTap: () => _open(m[i]),
+          if (m.isNotEmpty && _expanded)
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              mainAxisExtent: 56,
+              children: [
+                for (final c in m)
+                  Card(
+                    margin: EdgeInsets.zero,
+                    clipBehavior: Clip.antiAlias,
+                    child: InkWell(
+                      onTap: () => _open(c),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Row(children: [
+                          TypeTile(icon: c.icon, color: c.color, size: 32),
+                          const SizedBox(width: 10),
+                          Expanded(
+                              child: Text(c.label,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(fontSize: 13))),
+                        ]),
+                      ),
                     ),
-                  ],
-                ],
-              ),
+                  ),
+              ],
             ),
-          if (f.isEmpty && m.isEmpty)
+          if (m.isNotEmpty)
+            Center(
+              child: TextButton(
+                onPressed: () => setState(() => _expanded = !_expanded),
+                child: Text(_expanded ? 'Show less' : 'Show more'),
+              ),
+            ),          if (f.isEmpty && m.isEmpty)
             const Padding(
               padding: EdgeInsets.all(32),
               child: Center(child: Text('No matching categories')),
