@@ -24,14 +24,29 @@ class SecureVaultApp extends StatefulWidget {
 
 class _SecureVaultAppState extends State<SecureVaultApp>
     with WidgetsBindingObserver {
+  final _navKey = GlobalKey<NavigatorState>();
+  late bool _wasUnlocked = widget.state.unlocked;
+
+  // Locking must close every open menu, dialog and pushed screen so nothing
+  // decrypted stays on top of the unlock screen.
+  void _onStateChanged() {
+    final now = widget.state.unlocked;
+    if (_wasUnlocked && !now) {
+      _navKey.currentState?.popUntil((r) => r.isFirst);
+    }
+    _wasUnlocked = now;
+  }
+
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    widget.state.addListener(_onStateChanged);
   }
 
   @override
   void dispose() {
+    widget.state.removeListener(_onStateChanged);
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -53,6 +68,7 @@ class _SecureVaultAppState extends State<SecureVaultApp>
       child: Consumer<VaultState>(
         builder: (context, state, _) {
           return MaterialApp(
+            navigatorKey: _navKey,
             title: 'SecureVault',
             debugShowCheckedModeBanner: false,
             theme: buildLightTheme(),
