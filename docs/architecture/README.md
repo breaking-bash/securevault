@@ -13,8 +13,8 @@ The monorepo lives alongside the existing Flutter app (repo root: `lib/`,
 | `apps/desktop` | Tauri 2 shell + React/TS/Vite UI | Runs; shows scaffold notice and one `app_info` command |
 | `apps/browser-extension`, `apps/mobile`, `apps/admin-console` | Future clients | Empty (`.gitkeep`) |
 | `crates/shared-types` | IDs, key/format versions | Implemented + tests |
-| `crates/crypto-engine` | AEAD / KDF / RNG **traits** | Interface only |
-| `crates/key-manager` | Lock/unlock, rotation **trait** | Interface only |
+| `crates/crypto-engine` | AEAD / KDF / RNG | Implemented per ADR-0001; not independently reviewed |
+| `crates/key-manager` | Lock/unlock, wrapped vault keys, rotation | Implemented per ADR-0001; not independently reviewed |
 | `crates/vault-engine` | Item storage **trait** | Interface only |
 | `crates/{storage,sync}-engine`, `password-generator`, `platform-security` | Future | Empty |
 | `backend/` | Go REST API | Health endpoint, config |

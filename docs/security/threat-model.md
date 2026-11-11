@@ -24,7 +24,7 @@ tokens, device keys, sync metadata, audit logs.
 | T3 | Malicious/compromised webview script | Strict CSP; no crypto in JS; narrow IPC commands; empty capability set | Partially (CSP + empty capabilities) |
 | T4 | Overly broad Tauri permissions | Explicit per-command capabilities; no fs/shell/process | Applied to scaffold |
 | T5 | Nonce reuse / weak randomness | Fresh nonce per seal; OS RNG; tested | Interface contract only |
-| T6 | Key reuse across purposes | `KeyPurpose` separation; HKDF subkeys | Interface only |
+| T6 | Key reuse across purposes | `KeyPurpose` separation; HKDF subkeys | Implemented and unit-tested; not independently reviewed |
 | T7 | Ciphertext tampering / rollback | AEAD with associated data; revision counters | Not implemented |
 | T8 | Secrets lingering in memory/logs | zeroize; no secret logging; structured errors | Not implemented |
 | T9 | Session theft / replay | Hashed tokens at rest, expiry, revocation | Schema only |
