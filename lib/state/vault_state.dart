@@ -540,6 +540,13 @@ class VaultState extends ChangeNotifier {
   }
 
   // ---------------------------------------------------------------- settings
+  /// Records that an entry was opened (feeds Home > Recently Used).
+  Future<void> markUsed(String id) async {
+    final ids = [id, ...settings.recentIds.where((e) => e != id)];
+    settings.recentIds = ids.take(10).toList();
+    await updateSettings(settings);
+  }
+
   Future<void> updateSettings(AppSettings s) async {
     settings = s;
     await SettingsService.instance.save(s);

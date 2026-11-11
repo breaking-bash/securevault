@@ -9,9 +9,9 @@ ThemeData _base(Brightness brightness) {
     brightness: brightness,
   ).copyWith(
     primary: isLight ? const Color(0xFF0572EC) : const Color(0xFF4C9AFF),
-    surface: isLight ? const Color(0xFFEFF2F7) : const Color(0xFF0B1424),
+    surface: isLight ? const Color(0xFFEFF2F7) : const Color(0xFF050507),
     surfaceContainerHighest:
-        isLight ? const Color(0xFFFFFFFF) : const Color(0xFF16233A),
+        isLight ? const Color(0xFFFFFFFF) : const Color(0xFF1C1C1F),
   );
   return ThemeData(
     useMaterial3: true,
@@ -51,7 +51,7 @@ ThemeData _base(Brightness brightness) {
     navigationBarTheme: NavigationBarThemeData(
       backgroundColor: scheme.surface,
       surfaceTintColor: Colors.transparent,
-      indicatorColor: scheme.primary.withValues(alpha: 0.12),
+      indicatorColor: scheme.primary.withValues(alpha: 0.22),
       elevation: 3,
       labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
     ),

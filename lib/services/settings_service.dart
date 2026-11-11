@@ -18,8 +18,11 @@ class AppSettings {
   // Watchtower alerts the user dismissed, as "<entryId>|<issue>".
   Set<String> ignoredAlerts;
   bool fetchIcons;
+  // Most recently opened entry ids, newest first.
+  List<String> recentIds;
 
   AppSettings({
+    List<String>? recentIds,
     Set<String>? hiddenHomeSections,
     Set<String>? ignoredAlerts,
     this.fetchIcons = true,
@@ -28,7 +31,8 @@ class AppSettings {
     this.autoLockImmediate = false,
     this.clipboardClearSeconds = 30,
   })  : hiddenHomeSections = hiddenHomeSections ?? {},
-        ignoredAlerts = ignoredAlerts ?? {};
+        ignoredAlerts = ignoredAlerts ?? {},
+        recentIds = recentIds ?? [];
 
   AppSettings copyWith({
     ThemeMode? themeMode,
@@ -45,6 +49,7 @@ class AppSettings {
         fetchIcons: fetchIcons ?? this.fetchIcons,
         hiddenHomeSections: {...hiddenHomeSections},
         ignoredAlerts: {...ignoredAlerts},
+        recentIds: [...recentIds],
       );
 
   Map<String, dynamic> toJson() => {
@@ -55,6 +60,7 @@ class AppSettings {
         'hiddenHomeSections': hiddenHomeSections.toList(),
         'ignoredAlerts': ignoredAlerts.toList(),
         'fetchIcons': fetchIcons,
+        'recentIds': recentIds,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> j) => AppSettings(
@@ -68,6 +74,7 @@ class AppSettings {
         hiddenHomeSections:
             ((j['hiddenHomeSections'] ?? const []) as List).cast<String>().toSet(),
         fetchIcons: (j['fetchIcons'] ?? true) as bool,
+        recentIds: ((j['recentIds'] ?? const []) as List).cast<String>().toList(),
         ignoredAlerts:
             ((j['ignoredAlerts'] ?? const []) as List).cast<String>().toSet(),
       );

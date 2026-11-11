@@ -24,6 +24,14 @@ class EntryDetailScreen extends StatefulWidget {
 class _EntryDetailScreenState extends State<EntryDetailScreen> {
   final Set<String> _revealed = {};
 
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) context.read<VaultState>().markUsed(widget.entryId);
+    });
+  }
+
   void _toggle(String k) => setState(
       () => _revealed.contains(k) ? _revealed.remove(k) : _revealed.add(k));
 

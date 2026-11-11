@@ -1,10 +1,14 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/item_templates.dart';
 import '../../models/secure_note.dart';
 import '../../models/vault_entry.dart';
+import '../../services/totp_service.dart';
 import '../../state/vault_state.dart';
+import '../theme.dart';
 import '../widgets/generator_sheet.dart';
 import '../widgets/type_tile.dart';
 import 'entry_detail_screen.dart';
@@ -15,7 +19,7 @@ import 'note_edit_screen.dart';
 import 'settings_screen.dart';
 import 'watchtower_screen.dart';
 
-/// App shell: a 4-tab bottom navigation (Vault · Generator · Watchtower · Settings).
+/// App shell: icon-only bottom navigation (Home · Vault · Search · Watchtower).
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -32,33 +36,43 @@ class _HomeScreenState extends State<HomeScreen> {
       body: IndexedStack(
         index: _tab,
         children: const [
+          _HomeTab(),
           _VaultTab(),
-          _GeneratorTab(),
+          _SearchTab(),
           WatchtowerScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
+        height: 68,
         selectedIndex: _tab,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysHide,
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
           NavigationDestination(
-              icon: Icon(Icons.lock_outline),
-              selectedIcon: Icon(Icons.lock),
+              icon: Icon(Icons.home_outlined),
+              selectedIcon: Icon(Icons.home_rounded),
+              tooltip: 'Home',
+              label: 'Home'),
+          NavigationDestination(
+              icon: Icon(Icons.description_outlined),
+              selectedIcon: Icon(Icons.description),
+              tooltip: 'Vault',
               label: 'Vault'),
           NavigationDestination(
-              icon: Icon(Icons.autorenew_outlined),
-              selectedIcon: Icon(Icons.autorenew),
-              label: 'Generator'),
+              icon: Icon(Icons.search),
+              selectedIcon: Icon(Icons.search),
+              tooltip: 'Search',
+              label: 'Search'),
           NavigationDestination(
               icon: Icon(Icons.shield_outlined),
               selectedIcon: Icon(Icons.shield),
+              tooltip: 'Watchtower',
               label: 'Watchtower'),
         ],
       ),
     );
   }
 }
-
 // ---------------------------------------------------------------- Vault tab
 class _VaultTab extends StatefulWidget {
   const _VaultTab();
@@ -111,52 +125,27 @@ class _VaultTabState extends State<_VaultTab> {
         .toList();
   }
 
-  void _add(BuildContext context) {
-    Navigator.of(context)
-        .push(MaterialPageRoute(builder: (_) => const NewItemScreen()));
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = context.watch<VaultState>();
     final searching = _query.trim().isNotEmpty;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _add(context),
-        icon: const Icon(Icons.add),
-        isExtended: _extended,
-        label: const Text('New Item'),
-      ),
+      floatingActionButton: _NewItemFab(extended: _extended),
       body: CustomScrollView(
         controller: _scroll,
         slivers: [
           SliverAppBar(
             pinned: true,
-            titleSpacing: 16,
-            title: Row(children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: Theme.of(context).colorScheme.primary,
-                child: Text(
-                  (state.account?.name ?? 'V').characters.first.toUpperCase(),
-                  style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Flexible(
-                child: Text(state.account?.name ?? 'Vault',
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.w700)),
-              ),
-            ]),
-            actions: [_menu(context, state), const SizedBox(width: 4)],
-          ),
-          SliverToBoxAdapter(
+            titleSpacing: 20,
+            title: const Text('Vault',
+                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w700)),
+            actions: [
+              Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: _profileMenu(context, state)),
+            ],
+          ),          SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
               child: TextField(
@@ -210,78 +199,6 @@ class _VaultTabState extends State<_VaultTab> {
           const Divider(height: 0, indent: 16, endIndent: 16),
         ],
       ),
-    );
-  }
-
-  Widget _menu(BuildContext context, VaultState state) {
-    return PopupMenuButton<String>(
-      tooltip: 'Settings',
-      icon: const Icon(Icons.vpn_key_outlined),
-      onSelected: (v) {
-        final nav = Navigator.of(context);
-        switch (v) {
-          case 'settings':
-            nav.push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
-          case 'customize':
-            showModalBottomSheet(
-              context: context,
-              showDragHandle: true,
-              builder: (_) => const _CustomizeHome(),
-            );
-          case 'archive':
-            nav.push(MaterialPageRoute(builder: (_) => const ArchiveScreen()));
-          case 'trash':
-            nav.push(MaterialPageRoute(
-                builder: (_) => const ArchiveScreen(trash: true)));
-          case 'folders':
-            showModalBottomSheet(
-              context: context,
-              showDragHandle: true,
-              isScrollControlled: true,
-              builder: (_) => const FolderManager(),
-            );
-          case 'switch':
-            state.signOut();
-          case 'lock':
-            state.lock();
-        }
-      },
-      itemBuilder: (_) => const [
-        PopupMenuItem(
-            value: 'settings',
-            child: ListTile(
-                leading: Icon(Icons.settings_outlined),
-                title: Text('Settings'))),
-        PopupMenuItem(
-            value: 'customize',
-            child: ListTile(
-                leading: Icon(Icons.tune), title: Text('Customize home'))),
-        PopupMenuItem(
-            value: 'archive',
-            child: ListTile(
-                leading: Icon(Icons.archive_outlined), title: Text('Archive'))),
-        PopupMenuItem(
-            value: 'trash',
-            child: ListTile(
-                leading: Icon(Icons.delete_outline),
-                title: Text('Recently Deleted'))),
-        PopupMenuItem(
-            value: 'folders',
-            child: ListTile(
-                leading: Icon(Icons.create_new_folder_outlined),
-                title: Text('Manage folders'))),
-        PopupMenuDivider(),
-        PopupMenuItem(
-            value: 'switch',
-            child: ListTile(
-                leading: Icon(Icons.switch_account_outlined),
-                title: Text('Switch account'))),
-        PopupMenuItem(
-            value: 'lock',
-            child: ListTile(
-                leading: Icon(Icons.lock_outline),
-                title: Text('Lock vault now'))),
-      ],
     );
   }
 
@@ -681,6 +598,8 @@ class _CustomizeHome extends StatelessWidget {
   const _CustomizeHome();
 
   static const _sections = {
+    'pinned': 'Pinned fields',
+    'recent': 'Recently used & modified',
     'tags': 'Tags',
     'categories': 'Categories',
     'folders': 'Folders',
@@ -712,6 +631,496 @@ class _CustomizeHome extends StatelessWidget {
               },
             ),
         ],
+      ),
+    );
+  }
+}
+Widget _profileMenu(BuildContext context, VaultState state) {
+  return PopupMenuButton<String>(
+    tooltip: 'Settings',
+    offset: const Offset(0, 48),
+    child: _Avatar(state.account?.name),
+    onSelected: (v) {
+      final nav = Navigator.of(context);
+      switch (v) {
+        case 'generator':
+          nav.push(MaterialPageRoute(builder: (_) => const _GeneratorTab()));
+        case 'settings':
+          nav.push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
+        case 'customize':
+          showModalBottomSheet(
+            context: context,
+            showDragHandle: true,
+            builder: (_) => const _CustomizeHome(),
+          );
+        case 'archive':
+          nav.push(MaterialPageRoute(builder: (_) => const ArchiveScreen()));
+        case 'trash':
+          nav.push(MaterialPageRoute(
+              builder: (_) => const ArchiveScreen(trash: true)));
+        case 'folders':
+          showModalBottomSheet(
+            context: context,
+            showDragHandle: true,
+            isScrollControlled: true,
+            builder: (_) => const FolderManager(),
+          );
+        case 'switch':
+          state.signOut();
+        case 'lock':
+          state.lock();
+      }
+    },
+    itemBuilder: (_) => const [
+      PopupMenuItem(
+          value: 'generator',
+          child: ListTile(
+              leading: Icon(Icons.autorenew), title: Text('Generator'))),
+      PopupMenuItem(
+          value: 'settings',
+          child: ListTile(
+              leading: Icon(Icons.settings_outlined),
+              title: Text('Settings'))),
+      PopupMenuItem(
+          value: 'customize',
+          child: ListTile(
+              leading: Icon(Icons.tune), title: Text('Customize home'))),
+      PopupMenuItem(
+          value: 'archive',
+          child: ListTile(
+              leading: Icon(Icons.archive_outlined), title: Text('Archive'))),
+      PopupMenuItem(
+          value: 'trash',
+          child: ListTile(
+              leading: Icon(Icons.delete_outline),
+              title: Text('Recently Deleted'))),
+      PopupMenuItem(
+          value: 'folders',
+          child: ListTile(
+              leading: Icon(Icons.create_new_folder_outlined),
+              title: Text('Manage folders'))),
+      PopupMenuDivider(),
+      PopupMenuItem(
+          value: 'switch',
+          child: ListTile(
+              leading: Icon(Icons.switch_account_outlined),
+              title: Text('Switch account'))),
+      PopupMenuItem(
+          value: 'lock',
+          child: ListTile(
+              leading: Icon(Icons.lock_outline),
+              title: Text('Lock vault now'))),
+    ],
+  );
+}
+
+
+/// Rounded-square profile avatar (top-right of every main screen).
+class _Avatar extends StatelessWidget {
+  final String? name;
+  const _Avatar(this.name);
+
+  @override
+  Widget build(BuildContext context) {
+    final n = (name ?? '').trim();
+    return Container(
+      width: 40,
+      height: 40,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF7FE3C2), Color(0xFF3FA7E6)],
+        ),
+      ),
+      child: Text(n.isEmpty ? 'V' : n.characters.first.toUpperCase(),
+          style: const TextStyle(
+              color: Color(0xFF0B2A3A),
+              fontSize: 18,
+              fontWeight: FontWeight.w800)),
+    );
+  }
+}
+
+// ---------------------------------------------------------------- Home tab
+class _HomeTab extends StatelessWidget {
+  const _HomeTab();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<VaultState>();
+    final scheme = Theme.of(context).colorScheme;
+    bool show(String k) => !state.settings.hiddenHomeSections.contains(k);
+    final all = state.activeEntries;
+    final byId = {for (final e in all) e.id: e};
+    final used = [
+      for (final id in state.settings.recentIds)
+        if (byId[id] != null) byId[id]!
+    ].take(4).toList();
+    final modified = ([...all]..sort((a, b) => b.updatedAt.compareTo(a.updatedAt)))
+        .take(4)
+        .toList();
+    final pinned = [
+      ...all.where((e) => (e.totp ?? '').isNotEmpty),
+      ...all.where((e) =>
+          (e.totp ?? '').isEmpty &&
+          e.type == EntryType.login &&
+          e.password.isNotEmpty),
+    ].take(6).toList();
+
+    return Scaffold(
+      floatingActionButton: const _NewItemFab(extended: true),
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 110),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 16, 0),
+              child: Row(children: [
+                const Expanded(
+                  child: Text('Home',
+                      style:
+                          TextStyle(fontSize: 26, fontWeight: FontWeight.w700)),
+                ),
+                _profileMenu(context, state),
+              ]),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
+              child: Text(state.account?.name ?? 'Vault',
+                  style: const TextStyle(
+                      fontSize: 18, fontWeight: FontWeight.w700)),
+            ),
+            if (show('pinned') && pinned.isNotEmpty)
+              SizedBox(
+                height: 104,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: pinned.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (_, i) => _PinnedCard(entry: pinned[i]),
+                ),
+              ),
+            if (all.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(32),
+                child: Center(
+                  child: Text('Your vault is empty.\nTap New Item to add a login.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: scheme.onSurfaceVariant)),
+                ),
+              ),
+            if (show('recent') && used.isNotEmpty)
+              _CollapsibleCard(
+                title: 'Recently Used',
+                icon: Icons.history,
+                tint: const Color(0xFF7EF0E6),
+                entries: used,
+              ),
+            if (show('recent') && modified.isNotEmpty)
+              _CollapsibleCard(
+                title: 'Recently Modified',
+                icon: Icons.sync,
+                tint: const Color(0xFFD9A8F0),
+                entries: modified,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Blue rounded "+ New Item" button shared by Home and Vault.
+class _NewItemFab extends StatelessWidget {
+  final bool extended;
+  const _NewItemFab({required this.extended});
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton.extended(
+      onPressed: () => Navigator.of(context)
+          .push(MaterialPageRoute(builder: (_) => const NewItemScreen())),
+      icon: const Icon(Icons.add),
+      isExtended: extended,
+      label: const Text('New Item'),
+    );
+  }
+}
+
+class _PinnedCard extends StatefulWidget {
+  final VaultEntry entry;
+  const _PinnedCard({required this.entry});
+
+  @override
+  State<_PinnedCard> createState() => _PinnedCardState();
+}
+
+class _PinnedCardState extends State<_PinnedCard> {
+  Timer? _timer;
+  TotpConfig? _cfg;
+
+  @override
+  void initState() {
+    super.initState();
+    final t = widget.entry.totp ?? '';
+    if (t.isNotEmpty) {
+      _cfg = TotpService.fromStored(t);
+      _timer = Timer.periodic(
+          const Duration(seconds: 1), (_) => mounted ? setState(() {}) : null);
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _spaced(String c) => c.length == 6
+      ? '${c.substring(0, 3)} \u2022 ${c.substring(3)}'
+      : c;
+
+  @override
+  Widget build(BuildContext context) {
+    final e = widget.entry;
+    final scheme = Theme.of(context).colorScheme;
+    final tpl = ItemTemplates.of(e.type);
+    final otp = _cfg != null;
+    final label = otp ? 'one-time password' : 'password';
+    Widget value;
+    if (otp) {
+      final left = TotpService.secondsRemaining(_cfg!.period);
+      value = Row(children: [
+        Text(_spaced(TotpService.generate(_cfg!)),
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500)),
+        const SizedBox(width: 8),
+        Container(
+          padding: const EdgeInsets.fromLTRB(6, 3, 8, 3),
+          decoration: BoxDecoration(
+              color: scheme.surface, borderRadius: BorderRadius.circular(12)),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                value: left / _cfg!.period,
+                strokeWidth: 3,
+                color: left <= 5 ? Colors.red : const Color(0xFF1E8E3E),
+                backgroundColor: scheme.outlineVariant,
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text('$left', style: const TextStyle(fontSize: 12)),
+          ]),
+        ),
+      ]);
+    } else {
+      value = Text('\u2022' * 10,
+          style: const TextStyle(fontSize: 18, letterSpacing: 2));
+    }
+    return Material(
+      color: scheme.surfaceContainerHighest,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () {
+          final state = context.read<VaultState>();
+          final secret = otp
+              ? TotpService.generate(_cfg!)
+              : e.password;
+          state.copyToClipboard(secret, sensitive: true);
+          ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('${e.title} $label copied')));
+        },
+        child: Container(
+          width: 210,
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(children: [
+                TypeTile(
+                    icon: tpl.icon,
+                    color: tpl.color,
+                    size: 22,
+                    url: e.type == EntryType.login ? e.url : null),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(e.title.isEmpty ? '(untitled)' : e.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 16)),
+                ),
+              ]),
+              const Spacer(),
+              Text(label,
+                  style: TextStyle(
+                      fontSize: 14, color: fieldLabelColor(context))),
+              const SizedBox(height: 2),
+              value,
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// "Recently Used" / "Recently Modified" collapsible card.
+class _CollapsibleCard extends StatefulWidget {
+  final String title;
+  final IconData icon;
+  final Color tint;
+  final List<VaultEntry> entries;
+  const _CollapsibleCard(
+      {required this.title,
+      required this.icon,
+      required this.tint,
+      required this.entries});
+
+  @override
+  State<_CollapsibleCard> createState() => _CollapsibleCardState();
+}
+
+class _CollapsibleCardState extends State<_CollapsibleCard> {
+  bool _open = true;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Material(
+        color: scheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(18),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: [
+          InkWell(
+            onTap: () => setState(() => _open = !_open),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+              child: Row(children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: widget.tint,
+                  child: Icon(widget.icon, color: const Color(0xFF16323A)),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(widget.title,
+                      style: const TextStyle(
+                          fontSize: 18, fontWeight: FontWeight.w700)),
+                ),
+                Icon(_open ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    color: scheme.primary, size: 28),
+              ]),
+            ),
+          ),
+          if (_open)
+            for (final e in widget.entries)
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20),
+                leading: TypeTile(
+                    icon: ItemTemplates.of(e.type).icon,
+                    color: ItemTemplates.of(e.type).color,
+                    url: e.type == EntryType.login ? e.url : null),
+                title: Text(e.title.isEmpty ? '(untitled)' : e.title,
+                    style: const TextStyle(fontSize: 17)),
+                subtitle: e.subtitle.isEmpty ? null : Text(e.subtitle),
+                onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => EntryDetailScreen(entryId: e.id))),
+              ),
+          const SizedBox(height: 6),
+        ]),
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------- Search tab
+class _SearchTab extends StatefulWidget {
+  const _SearchTab();
+
+  @override
+  State<_SearchTab> createState() => _SearchTabState();
+}
+
+class _SearchTabState extends State<_SearchTab> {
+  String _q = '';
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<VaultState>();
+    final q = _q.trim().toLowerCase();
+    final entries = q.isEmpty
+        ? <VaultEntry>[]
+        : state.activeEntries
+            .where((e) =>
+                e.title.toLowerCase().contains(q) ||
+                e.username.toLowerCase().contains(q) ||
+                e.url.toLowerCase().contains(q) ||
+                e.subtitle.toLowerCase().contains(q) ||
+                e.tags.any((t) => t.contains(q)))
+            .toList();
+    final notes = q.isEmpty
+        ? <SecureNote>[]
+        : state.notes
+            .where((n) =>
+                n.title.toLowerCase().contains(q) ||
+                n.body.toLowerCase().contains(q))
+            .toList();
+    return Scaffold(
+      body: SafeArea(
+        bottom: false,
+        child: ListView(
+          padding: const EdgeInsets.only(bottom: 24),
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+              child: Row(children: [
+                Expanded(
+                  child: TextField(
+                    onChanged: (v) => setState(() => _q = v),
+                    decoration: InputDecoration(
+                      hintText: 'Search in all vaults',
+                      filled: true,
+                      fillColor:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(28),
+                          borderSide: BorderSide.none),
+                      enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(28),
+                          borderSide: BorderSide.none),
+                      prefixIcon: const Icon(Icons.search),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                _profileMenu(context, state),
+              ]),
+            ),
+            if (q.isEmpty)
+              const Padding(
+                padding: EdgeInsets.all(48),
+                child: Center(child: Text('Search titles, usernames, sites and tags')),
+              )
+            else if (entries.isEmpty && notes.isEmpty)
+              const Padding(
+                  padding: EdgeInsets.all(48),
+                  child: Center(child: Text('No matches')))
+            else
+              _Group(children: [
+                ...entries.map((e) => _EntryRow(entry: e)),
+                ...notes.map((n) => _NoteRow(note: n)),
+              ]),
+          ],
+        ),
       ),
     );
   }
