@@ -11,4 +11,12 @@ class ScreenSecurity {
       await _ch.invokeMethod('setSecure', block);
     } catch (_) {}
   }
+
+  /// Shares autofill options with the native autofill service.
+  static Future<void> applyAutofill(bool inline, bool save) async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _ch.invokeMethod('setAutofillPrefs', {'inline': inline, 'save': save});
+    } catch (_) {}
+  }
 }

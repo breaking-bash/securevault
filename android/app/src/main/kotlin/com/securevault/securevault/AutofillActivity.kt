@@ -25,6 +25,9 @@ class AutofillActivity : FlutterFragmentActivity() {
         const val EXTRA_PACKAGE = "sv_package"
         const val EXTRA_USER_ID = "sv_user_id"
         const val EXTRA_PASS_ID = "sv_pass_id"
+        const val EXTRA_SAVE = "sv_save"
+        const val EXTRA_SAVE_USER = "sv_save_user"
+        const val EXTRA_SAVE_PASS = "sv_save_pass"
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -35,7 +38,10 @@ class AutofillActivity : FlutterFragmentActivity() {
                     "getRequest" -> result.success(
                         mapOf(
                             "domain" to intent.getStringExtra(EXTRA_DOMAIN),
-                            "package" to intent.getStringExtra(EXTRA_PACKAGE)
+                            "package" to intent.getStringExtra(EXTRA_PACKAGE),
+                            "save" to intent.getBooleanExtra(EXTRA_SAVE, false),
+                            "saveUser" to intent.getStringExtra(EXTRA_SAVE_USER),
+                            "savePass" to intent.getStringExtra(EXTRA_SAVE_PASS)
                         )
                     )
                     "fill" -> {

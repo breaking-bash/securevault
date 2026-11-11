@@ -18,6 +18,7 @@ import 'group_list_screen.dart';
 import 'new_item_screen.dart';
 import 'note_edit_screen.dart';
 import 'settings_screen.dart';
+import '../widgets/alert_banners.dart';
 import 'watchtower_screen.dart';
 
 /// App shell: icon-only bottom navigation (Home · Vault · Search · Watchtower).
@@ -824,6 +825,7 @@ class _HomeTabState extends State<_HomeTab> {
                   style: const TextStyle(
                       fontSize: 18, fontWeight: FontWeight.w700)),
             ),
+            const AlertBanners(),
             if (show('pinned') && pinned.isNotEmpty)
               SizedBox(
                 height: 104,

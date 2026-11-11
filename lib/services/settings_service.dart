@@ -25,6 +25,10 @@ class AppSettings {
   // Biometric unlock is refused once this many days pass since the last
   // master-password unlock (0 = never require).
   int requirePasswordDays;
+  bool inlineSuggestions; // Labs: inline autofill suggestions (Android 11+)
+  bool offerSave; // offer to save new logins from autofill
+  bool notifyWatchtower; // Home banner for Watchtower alerts
+  bool notifyAutofill; // Home banner when autofill is off
   // accountId -> epoch ms of the last master-password unlock.
   Map<String, int> lastPasswordUnlock;
   // Most recently opened entry ids, newest first.
@@ -38,6 +42,10 @@ class AppSettings {
     this.blockScreenshots = true,
     this.alwaysShowPasswords = false,
     this.requirePasswordDays = 7,
+    this.inlineSuggestions = true,
+    this.offerSave = true,
+    this.notifyWatchtower = true,
+    this.notifyAutofill = true,
     Map<String, int>? lastPasswordUnlock,
     this.themeMode = ThemeMode.system,
     this.autoLockMinutes = 3,
@@ -57,6 +65,10 @@ class AppSettings {
     bool? blockScreenshots,
     bool? alwaysShowPasswords,
     int? requirePasswordDays,
+    bool? inlineSuggestions,
+    bool? offerSave,
+    bool? notifyWatchtower,
+    bool? notifyAutofill,
   }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
@@ -67,6 +79,10 @@ class AppSettings {
         blockScreenshots: blockScreenshots ?? this.blockScreenshots,
         alwaysShowPasswords: alwaysShowPasswords ?? this.alwaysShowPasswords,
         requirePasswordDays: requirePasswordDays ?? this.requirePasswordDays,
+        inlineSuggestions: inlineSuggestions ?? this.inlineSuggestions,
+        offerSave: offerSave ?? this.offerSave,
+        notifyWatchtower: notifyWatchtower ?? this.notifyWatchtower,
+        notifyAutofill: notifyAutofill ?? this.notifyAutofill,
         lastPasswordUnlock: {...lastPasswordUnlock},
         hiddenHomeSections: {...hiddenHomeSections},
         ignoredAlerts: {...ignoredAlerts},
@@ -84,6 +100,10 @@ class AppSettings {
         'blockScreenshots': blockScreenshots,
         'alwaysShowPasswords': alwaysShowPasswords,
         'requirePasswordDays': requirePasswordDays,
+        'inlineSuggestions': inlineSuggestions,
+        'offerSave': offerSave,
+        'notifyWatchtower': notifyWatchtower,
+        'notifyAutofill': notifyAutofill,
         'lastPasswordUnlock': lastPasswordUnlock,
         'recentIds': recentIds,
       };
@@ -102,6 +122,10 @@ class AppSettings {
         blockScreenshots: (j['blockScreenshots'] ?? true) as bool,
         alwaysShowPasswords: (j['alwaysShowPasswords'] ?? false) as bool,
         requirePasswordDays: (j['requirePasswordDays'] ?? 7) as int,
+        inlineSuggestions: (j['inlineSuggestions'] ?? true) as bool,
+        offerSave: (j['offerSave'] ?? true) as bool,
+        notifyWatchtower: (j['notifyWatchtower'] ?? true) as bool,
+        notifyAutofill: (j['notifyAutofill'] ?? true) as bool,
         lastPasswordUnlock: ((j['lastPasswordUnlock'] ?? const {}) as Map)
             .map((k, v) => MapEntry(k as String, (v as num).toInt())),
         recentIds: ((j['recentIds'] ?? const []) as List).cast<String>().toList(),

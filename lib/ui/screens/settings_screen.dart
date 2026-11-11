@@ -52,6 +52,11 @@ class SettingsScreen extends StatelessWidget {
           if (Platform.isAndroid)
             row(Icons.auto_fix_high_outlined, const Color(0xFFB8B8F0),
                 'Autofill', const _AutofillPage()),
+          row(Icons.notifications_none_rounded, const Color(0xFFFFB74D),
+              'Notifications', const _NotificationsPage()),
+          if (Platform.isAndroid)
+            row(Icons.science_outlined, const Color(0xFFD9A8F0), 'Labs',
+                const _LabsPage()),
           row(Icons.settings_suggest_outlined, const Color(0xFF3FC3EE),
               'Advanced', const _AdvancedPage()),
           row(Icons.info_outline, const Color(0xFF3FC3EE), 'About',
@@ -500,6 +505,16 @@ class _AutofillPageState extends State<_AutofillPage>
         trailing: Text(_on ? 'On' : 'Set up'),
         onTap: _on ? null : () => _ch.invokeMethod('openSettings'),
       ),
+      SwitchListTile(
+        secondary: const Icon(Icons.save_alt_rounded),
+        title: const Text('Offer to save logins'),
+        subtitle: const Text('Ask to save new logins you type in other apps'),
+        value: context.watch<VaultState>().settings.offerSave,
+        onChanged: (v) {
+          final st = context.read<VaultState>();
+          st.updateSettings(st.settings.copyWith(offerSave: v));
+        },
+      ),
       if (!_on) ...[
         const _Header('To set it up'),
         const ListTile(
@@ -512,6 +527,56 @@ class _AutofillPageState extends State<_AutofillPage>
             leading: CircleAvatar(radius: 12, child: Text('3')),
             title: Text('Come back to SecureVault')),
       ],
+    ]);
+  }
+}
+
+class _NotificationsPage extends StatelessWidget {
+  const _NotificationsPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<VaultState>();
+    final s = state.settings;
+    return _Page(title: 'Notifications', children: [
+      SwitchListTile(
+        secondary: const Icon(Icons.shield_outlined),
+        title: const Text('Watchtower alerts'),
+        subtitle: const Text('Show a banner on Home when items need attention'),
+        value: s.notifyWatchtower,
+        onChanged: (v) => state.updateSettings(s.copyWith(notifyWatchtower: v)),
+      ),
+      if (Platform.isAndroid)
+        SwitchListTile(
+          secondary: const Icon(Icons.auto_fix_high_rounded),
+          title: const Text('Autofill reminder'),
+          subtitle: const Text('Remind me when the autofill service is off'),
+          value: s.notifyAutofill,
+          onChanged: (v) => state.updateSettings(s.copyWith(notifyAutofill: v)),
+        ),
+    ]);
+  }
+}
+
+class _LabsPage extends StatelessWidget {
+  const _LabsPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<VaultState>();
+    final s = state.settings;
+    return _Page(title: 'Labs', children: [
+      const Padding(
+        padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
+        child: Text('Experimental features. They may change or be removed.'),
+      ),
+      SwitchListTile(
+        secondary: const Icon(Icons.keyboard_alt_outlined),
+        title: const Text('Inline autofill suggestions'),
+        subtitle: const Text('Show suggestions on the keyboard (Android 11+)'),
+        value: s.inlineSuggestions,
+        onChanged: (v) => state.updateSettings(s.copyWith(inlineSuggestions: v)),
+      ),
     ]);
   }
 }

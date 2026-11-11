@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import '../../state/vault_state.dart';
 import 'autofill_picker_screen.dart';
+import 'autofill_save_screen.dart';
 import 'home_screen.dart';
 import 'unlock_screen.dart';
 import 'welcome_screen.dart';
@@ -19,9 +20,12 @@ class GateScreen extends StatelessWidget {
     final Widget screen;
     if (state.unlocked && !state.unlockAnimating) {
       key = 'home';
-      screen = state.autofillRequest != null
-          ? AutofillPickerScreen(request: state.autofillRequest!)
-          : const HomeScreen();
+      final req = state.autofillRequest;
+      screen = req == null
+          ? const HomeScreen()
+          : req.isSave
+              ? AutofillSaveScreen(request: req)
+              : AutofillPickerScreen(request: req);
     } else if (!state.hasAccounts) {
       // No accounts on this device yet -> first-run welcome / create flow.
       key = 'welcome';

@@ -94,6 +94,7 @@ class VaultState extends ChangeNotifier {
     DatabaseService.initPlatform();
     settings = await SettingsService.instance.load();
     ScreenSecurity.apply(settings.blockScreenshots);
+    ScreenSecurity.applyAutofill(settings.inlineSuggestions, settings.offerSave);
     accountsList = await _accounts.listAccounts();
     notifyListeners();
   }
@@ -571,6 +572,7 @@ class VaultState extends ChangeNotifier {
   Future<void> updateSettings(AppSettings s) async {
     settings = s;
     ScreenSecurity.apply(s.blockScreenshots);
+    ScreenSecurity.applyAutofill(s.inlineSuggestions, s.offerSave);
     await SettingsService.instance.save(s);
     _restartLockTimer();
     notifyListeners();

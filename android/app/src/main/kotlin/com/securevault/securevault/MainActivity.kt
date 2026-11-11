@@ -35,6 +35,13 @@ class MainActivity : FlutterFragmentActivity() {
                         else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
                         result.success(null)
                     }
+                    "setAutofillPrefs" -> {
+                        getSharedPreferences("sv_prefs", MODE_PRIVATE).edit()
+                            .putBoolean("inline", call.argument<Boolean>("inline") ?: true)
+                            .putBoolean("save", call.argument<Boolean>("save") ?: true)
+                            .apply()
+                        result.success(null)
+                    }
                     "openSettings" -> {
                         startActivity(
                             Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE)

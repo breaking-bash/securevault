@@ -10,11 +10,16 @@ import android.service.autofill.Dataset
 import android.service.autofill.FillCallback
 import android.service.autofill.FillRequest
 import android.service.autofill.FillResponse
+import android.service.autofill.InlinePresentation
 import android.service.autofill.SaveCallback
+import android.service.autofill.SaveInfo
 import android.service.autofill.SaveRequest
 import android.text.InputType
 import android.view.autofill.AutofillId
 import android.widget.RemoteViews
+import android.graphics.drawable.Icon
+import androidx.autofill.inline.UiVersions
+import androidx.autofill.inline.v1.InlineSuggestionUi
 
 /**
  * Detects username/password fields and offers a single "Autofill with
@@ -28,7 +33,10 @@ class SecureVaultAutofillService : AutofillService() {
         var passId: AutofillId? = null
         var lastText: AutofillId? = null
         var domain: String? = null
+        val values = HashMap<AutofillId, String>()
     }
+
+    private fun prefs() = getSharedPreferences("sv_prefs", MODE_PRIVATE)
 
     override fun onFillRequest(
         request: FillRequest,
@@ -69,13 +77,47 @@ class SecureVaultAutofillService : AutofillService() {
         val ds = Dataset.Builder(presentation)
         f.userId?.let { ds.setValue(it, null) }
         f.passId?.let { ds.setValue(it, null) }
+        if (Build.VERSION.SDK_INT >= 30 && prefs().getBoolean("inline", true)) {
+            inlinePresentation(request, "SecureVault" + (f.domain?.let { " · $it" } ?: ""))
+                ?.let { ds.setInlinePresentation(it) }
+        }
         ds.setAuthentication(sender)
-        callback.onSuccess(FillResponse.Builder().addDataset(ds.build()).build())
+        val response = FillResponse.Builder().addDataset(ds.build())
+        val passId = f.passId
+        if (passId != null && prefs().getBoolean("save", true)) {
+            val save = SaveInfo.Builder(
+                SaveInfo.SAVE_DATA_TYPE_USERNAME or SaveInfo.SAVE_DATA_TYPE_PASSWORD,
+                arrayOf(passId)
+            )
+            f.userId?.let { save.setOptionalIds(arrayOf(it)) }
+            save.setFlags(SaveInfo.FLAG_SAVE_ON_ALL_VIEWS_INVISIBLE)
+            response.setSaveInfo(save.build())
+        }
+        callback.onSuccess(response.build())
+    }
+
+    @androidx.annotation.RequiresApi(30)
+    private fun inlinePresentation(request: FillRequest, title: String): InlinePresentation? {
+        val spec = request.inlineSuggestionsRequest?.inlinePresentationSpecs?.firstOrNull()
+            ?: return null
+        if (!UiVersions.getVersions(spec.style).contains(UiVersions.INLINE_UI_VERSION_1)) return null
+        val attribution = PendingIntent.getService(
+            this, 0, Intent(), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val content = InlineSuggestionUi.newContentBuilder(attribution)
+            .setTitle(title)
+            .setStartIcon(Icon.createWithResource(this, R.mipmap.ic_launcher))
+            .build()
+        return InlinePresentation(content.slice, spec, false)
     }
 
     private fun walk(node: AssistStructure.ViewNode, f: Fields) {
         f.domain = f.domain ?: node.webDomain
         val id = node.autofillId
+        if (id != null) {
+            val v = node.autofillValue
+            if (v != null && v.isText) f.values[id] = v.textValue.toString()
+        }
         if (id != null && node.visibility == android.view.View.VISIBLE) {
             val hints = node.autofillHints?.map { it.lowercase() } ?: emptyList()
             val type = node.inputType
@@ -102,6 +144,26 @@ class SecureVaultAutofillService : AutofillService() {
     }
 
     override fun onSaveRequest(request: SaveRequest, callback: SaveCallback) {
+        val structure = request.fillContexts.last().structure
+        val f = Fields()
+        for (i in 0 until structure.windowNodeCount) {
+            walk(structure.getWindowNodeAt(i).rootViewNode, f)
+        }
+        val pass = f.passId?.let { f.values[it] }
+        val user = f.userId?.let { f.values[it] } ?: ""
+        if (pass.isNullOrEmpty()) {
+            callback.onSuccess()
+            return
+        }
+        startActivity(
+            Intent(this, AutofillActivity::class.java)
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra(AutofillActivity.EXTRA_DOMAIN, f.domain)
+                .putExtra(AutofillActivity.EXTRA_PACKAGE, structure.activityComponent?.packageName)
+                .putExtra(AutofillActivity.EXTRA_SAVE, true)
+                .putExtra(AutofillActivity.EXTRA_SAVE_USER, user)
+                .putExtra(AutofillActivity.EXTRA_SAVE_PASS, pass)
+        )
         callback.onSuccess()
     }
 }

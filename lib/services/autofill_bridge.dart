@@ -7,7 +7,12 @@ import 'package:flutter/services.dart';
 class AutofillRequest {
   final String? domain;
   final String? package;
-  const AutofillRequest(this.domain, this.package);
+  // Set when Android asks to save credentials the user just typed.
+  final bool isSave;
+  final String saveUsername;
+  final String savePassword;
+  const AutofillRequest(this.domain, this.package,
+      {this.isSave = false, this.saveUsername = '', this.savePassword = ''});
 }
 
 class AutofillBridge {
@@ -18,7 +23,10 @@ class AutofillBridge {
     try {
       final m = await _ch.invokeMethod<Map>('getRequest');
       if (m == null) return null;
-      return AutofillRequest(m['domain'] as String?, m['package'] as String?);
+      return AutofillRequest(m['domain'] as String?, m['package'] as String?,
+          isSave: (m['save'] ?? false) as bool,
+          saveUsername: (m['saveUser'] ?? '') as String,
+          savePassword: (m['savePass'] ?? '') as String);
     } catch (_) {
       return null;
     }
