@@ -1,0 +1,15 @@
+[package]
+name = "sync-engine"
+description = "Revision-based sync planning and conflict detection over encrypted item metadata."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+shared-types.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true
+

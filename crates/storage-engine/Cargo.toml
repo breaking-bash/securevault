@@ -1,0 +1,18 @@
+[package]
+name = "storage-engine"
+description = "Durable on-disk ItemStore for sealed (already encrypted) blobs."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+shared-types.workspace = true
+vault-engine = { path = "../vault-engine" }
+
+[dev-dependencies]
+tempfile = "3"
+
+[lints]
+workspace = true
+

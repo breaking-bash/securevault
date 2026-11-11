@@ -5,6 +5,10 @@ members = [
     "crates/crypto-engine",
     "crates/key-manager",
     "crates/vault-engine",
+    "crates/password-generator",
+    "crates/storage-engine",
+    "crates/sync-engine",
+    "crates/platform-security",
     "apps/desktop/src-tauri",
 ]
 
