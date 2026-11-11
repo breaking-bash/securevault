@@ -42,6 +42,15 @@ class MainActivity : FlutterFragmentActivity() {
                             .apply()
                         result.success(null)
                     }
+                    "openPasskeySettings" -> {
+                        if (android.os.Build.VERSION.SDK_INT >= 34) {
+                            startActivity(
+                                Intent("android.settings.CREDENTIAL_PROVIDER")
+                                    .setData(Uri.parse("package:$packageName"))
+                            )
+                            result.success(true)
+                        } else result.success(false)
+                    }
                     "openSettings" -> {
                         startActivity(
                             Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE)

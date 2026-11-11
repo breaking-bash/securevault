@@ -11,8 +11,21 @@ class AutofillRequest {
   final bool isSave;
   final String saveUsername;
   final String savePassword;
+  // Set for Credential Manager passkey requests: 'create' or 'get'.
+  final String? passkeyMode;
+  final String? rpId;
+  final String? rpName;
+  final String? userName;
+  final String? displayName;
   const AutofillRequest(this.domain, this.package,
-      {this.isSave = false, this.saveUsername = '', this.savePassword = ''});
+      {this.isSave = false,
+      this.saveUsername = '',
+      this.savePassword = '',
+      this.passkeyMode,
+      this.rpId,
+      this.rpName,
+      this.userName,
+      this.displayName});
 }
 
 class AutofillBridge {
@@ -26,7 +39,12 @@ class AutofillBridge {
       return AutofillRequest(m['domain'] as String?, m['package'] as String?,
           isSave: (m['save'] ?? false) as bool,
           saveUsername: (m['saveUser'] ?? '') as String,
-          savePassword: (m['savePass'] ?? '') as String);
+          savePassword: (m['savePass'] ?? '') as String,
+          passkeyMode: m['passkeyMode'] as String?,
+          rpId: m['rpId'] as String?,
+          rpName: m['rpName'] as String?,
+          userName: m['userName'] as String?,
+          displayName: m['displayName'] as String?);
     } catch (_) {
       return null;
     }
@@ -34,6 +52,23 @@ class AutofillBridge {
 
   static Future<void> fill(String username, String password) =>
       _ch.invokeMethod('fill', {'username': username, 'password': password});
+
+  static Future<Map<String, String>> passkeyCreate() async {
+    final m = await _ch.invokeMethod<Map>('passkeyCreate');
+    return {for (final e in (m ?? {}).entries) e.key as String: e.value as String};
+  }
+
+  static Future<void> passkeyComplete() => _ch.invokeMethod('passkeyComplete');
+
+  static Future<void> passkeyAssert(
+          {required String privateKey,
+          required String credentialId,
+          required String userHandle}) =>
+      _ch.invokeMethod('passkeyAssert', {
+        'privateKey': privateKey,
+        'credentialId': credentialId,
+        'userHandle': userHandle,
+      });
 
   static Future<void> cancel() => _ch.invokeMethod('cancel');
 }

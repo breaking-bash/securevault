@@ -505,6 +505,19 @@ class _AutofillPageState extends State<_AutofillPage>
         trailing: Text(_on ? 'On' : 'Set up'),
         onTap: _on ? null : () => _ch.invokeMethod('openSettings'),
       ),
+      ListTile(
+        leading: const Icon(Icons.key_rounded),
+        title: const Text('Passkeys'),
+        subtitle: const Text('Use SecureVault to create and sign in with passkeys (Android 14+)'),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () async {
+          final ok = await _ch.invokeMethod<bool>('openPasskeySettings') ?? false;
+          if (!ok && context.mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                content: Text('Passkey providers need Android 14 or newer')));
+          }
+        },
+      ),
       SwitchListTile(
         secondary: const Icon(Icons.save_alt_rounded),
         title: const Text('Offer to save logins'),

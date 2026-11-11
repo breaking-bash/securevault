@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../state/vault_state.dart';
 import 'autofill_picker_screen.dart';
 import 'autofill_save_screen.dart';
+import 'passkey_screen.dart';
 import 'home_screen.dart';
 import 'unlock_screen.dart';
 import 'welcome_screen.dart';
@@ -23,7 +24,9 @@ class GateScreen extends StatelessWidget {
       final req = state.autofillRequest;
       screen = req == null
           ? const HomeScreen()
-          : req.isSave
+          : req.passkeyMode != null
+              ? PasskeyScreen(request: req)
+              : req.isSave
               ? AutofillSaveScreen(request: req)
               : AutofillPickerScreen(request: req);
     } else if (!state.hasAccounts) {
