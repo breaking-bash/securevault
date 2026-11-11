@@ -1,6 +1,6 @@
 [package]
 name = "key-manager"
-description = "Key manager INTERFACE ONLY. No key handling implementation yet."
+description = "SecureVault key manager (ADR-0001). Pending independent cryptographic review."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,6 +10,7 @@ publish.workspace = true
 shared-types.workspace = true
 crypto-engine.workspace = true
 thiserror.workspace = true
+zeroize = "1"
 
 [lints]
 workspace = true
