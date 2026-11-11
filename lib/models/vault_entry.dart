@@ -1,6 +1,22 @@
-/// A login / credential entry stored in the vault.
+/// Kinds of items a [VaultEntry] can represent.
+enum EntryType { login, card, ssh }
+
+/// Keys used in [VaultEntry.extra] for non-login item types.
+class EntryFields {
+  static const cardholder = 'cardholder';
+  static const cardNumber = 'cardNumber';
+  static const expiry = 'expiry';
+  static const cvv = 'cvv';
+  static const pin = 'pin';
+  static const publicKey = 'publicKey';
+  static const privateKey = 'privateKey';
+  static const fingerprint = 'fingerprint';
+  static const passphrase = 'passphrase';
+}
+
+/// A login, credit card or SSH key stored in the vault.
 ///
-/// Secret-bearing fields (username, password, url, notes, totp) are serialized
+/// Secret-bearing fields (username, password, url, notes, totp, [extra]) are serialized
 /// into a single JSON payload that is encrypted as one blob before it ever
 /// touches disk. Only [id], [folderId], [title], [createdAt] and [updatedAt]
 /// are stored in plaintext columns so the list can be rendered and searched by
@@ -8,6 +24,8 @@
 /// because the title lives in a column; deep search decrypts in memory).
 class VaultEntry {
   final String id;
+  EntryType type;
+  Map<String, String> extra;
   String title;
   String username;
   String password;
@@ -18,9 +36,24 @@ class VaultEntry {
   final DateTime createdAt;
   DateTime updatedAt;
 
+  /// Short secondary line shown under the title in lists.
+  String get subtitle {
+    switch (type) {
+      case EntryType.login:
+        return username;
+      case EntryType.card:
+        final n = (extra[EntryFields.cardNumber] ?? '').replaceAll(' ', '');
+        return n.length >= 4 ? '•••• ${n.substring(n.length - 4)}' : '';
+      case EntryType.ssh:
+        return extra[EntryFields.fingerprint] ?? '';
+    }
+  }
+
   VaultEntry({
     required this.id,
     required this.title,
+    this.type = EntryType.login,
+    Map<String, String>? extra,
     this.username = '',
     this.password = '',
     this.url = '',
@@ -29,7 +62,7 @@ class VaultEntry {
     this.folderId,
     required this.createdAt,
     required this.updatedAt,
-  });
+  }) : extra = extra ?? {};
 
   /// The secret payload that gets encrypted. Title is included too so that a
   /// tampered plaintext title can be detected on decrypt.
@@ -40,6 +73,8 @@ class VaultEntry {
         'url': url,
         'notes': notes,
         'totp': totp,
+        'type': type.name,
+        'extra': extra,
       };
 
   factory VaultEntry.fromSecretJson(
@@ -52,6 +87,10 @@ class VaultEntry {
     return VaultEntry(
       id: id,
       title: (json['title'] ?? '') as String,
+      type: EntryType.values.firstWhere((t) => t.name == json['type'],
+          orElse: () => EntryType.login),
+      extra: ((json['extra'] ?? const {}) as Map)
+          .map((k, v) => MapEntry(k as String, (v ?? '') as String)),
       username: (json['username'] ?? '') as String,
       password: (json['password'] ?? '') as String,
       url: (json['url'] ?? '') as String,

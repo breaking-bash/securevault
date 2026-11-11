@@ -67,8 +67,8 @@ class VaultState extends ChangeNotifier {
     required String name,
     required String masterPassword,
   }) async {
-    final account =
-        await _accounts.createAccount(name: name, masterPassword: masterPassword);
+    final account = await _accounts.createAccount(
+        name: name, masterPassword: masterPassword);
     accountsList = await _accounts.listAccounts();
     await unlock(account: account, masterPassword: masterPassword);
   }
@@ -161,7 +161,8 @@ class VaultState extends ChangeNotifier {
         updatedAt: _dt(row['updated_at']),
       ));
     }
-    folders.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    folders
+        .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
   }
 
   SealedBox _sealedFrom(String payload) =>
@@ -193,9 +194,10 @@ class VaultState extends ChangeNotifier {
     notifyListeners();
   }
 
-  VaultEntry newEntryDraft() {
+  VaultEntry newEntryDraft({EntryType type = EntryType.login}) {
     final now = DateTime.now();
-    return VaultEntry(id: _newId(), title: '', createdAt: now, updatedAt: now);
+    return VaultEntry(
+        id: _newId(), title: '', type: type, createdAt: now, updatedAt: now);
   }
 
   Future<void> deleteEntry(VaultEntry entry) async {
@@ -248,7 +250,8 @@ class VaultState extends ChangeNotifier {
       payload: jsonEncode(sealed.toJson()),
     );
     folders.add(folder);
-    folders.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    folders
+        .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     notifyListeners();
     return folder;
   }
@@ -263,7 +266,8 @@ class VaultState extends ChangeNotifier {
       createdAt: folder.createdAt.millisecondsSinceEpoch,
       payload: jsonEncode(sealed.toJson()),
     );
-    folders.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    folders
+        .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     notifyListeners();
   }
 

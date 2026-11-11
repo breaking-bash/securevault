@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/vault_entry.dart';
 import '../../state/vault_state.dart';
 import '../widgets/totp_code_tile.dart';
 import 'entry_edit_screen.dart';
@@ -15,6 +16,58 @@ class EntryDetailScreen extends StatefulWidget {
 
 class _EntryDetailScreenState extends State<EntryDetailScreen> {
   bool _showPassword = false;
+  bool _showSecret = false;
+
+  Widget _extraRow(VaultEntry e, String key, String label, IconData icon,
+      {bool secret = false, bool mono = false}) {
+    final v = e.extra[key] ?? '';
+    if (v.isEmpty) return const SizedBox.shrink();
+    final hidden = secret && !_showSecret;
+    return _FieldRow(
+      label: label,
+      value: hidden ? '•' * v.length.clamp(0, 24) : v,
+      icon: icon,
+      monospace: mono && !hidden,
+      trailing: secret
+          ? IconButton(
+              icon: Icon(_showSecret ? Icons.visibility_off : Icons.visibility),
+              onPressed: () => setState(() => _showSecret = !_showSecret),
+            )
+          : null,
+      onCopy: () => _copy(context, v, label, sensitive: secret),
+    );
+  }
+
+  List<Widget> _typeRows(VaultEntry e) {
+    switch (e.type) {
+      case EntryType.card:
+        return [
+          _extraRow(
+              e, EntryFields.cardholder, 'Cardholder', Icons.person_outline),
+          _extraRow(e, EntryFields.cardNumber, 'Card number', Icons.credit_card,
+              secret: true),
+          _extraRow(e, EntryFields.expiry, 'Expiry', Icons.event_outlined),
+          _extraRow(e, EntryFields.cvv, 'Security code', Icons.password,
+              secret: true),
+          _extraRow(e, EntryFields.pin, 'PIN', Icons.pin_outlined,
+              secret: true),
+        ];
+      case EntryType.ssh:
+        return [
+          _extraRow(e, EntryFields.publicKey, 'Public key', Icons.key,
+              mono: true),
+          _extraRow(
+              e, EntryFields.fingerprint, 'Fingerprint', Icons.fingerprint),
+          _extraRow(
+              e, EntryFields.privateKey, 'Private key', Icons.lock_outline,
+              secret: true, mono: true),
+          _extraRow(e, EntryFields.passphrase, 'Passphrase', Icons.password,
+              secret: true),
+        ];
+      case EntryType.login:
+        return const [];
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -54,48 +107,52 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       body: ListView(
         children: [
           const SizedBox(height: 8),
-          _FieldRow(
-            label: 'Username / email',
-            value: e.username,
-            icon: Icons.person_outline,
-            onCopy: e.username.isEmpty
-                ? null
-                : () => _copy(context, e.username, 'Username'),
-          ),
-          _FieldRow(
-            label: 'Password',
-            value: e.password.isEmpty
-                ? ''
-                : (_showPassword
-                    ? e.password
-                    : '•' * e.password.length.clamp(0, 24)),
-            icon: Icons.lock_outline,
-            monospace: _showPassword,
-            trailing: e.password.isEmpty
-                ? null
-                : IconButton(
-                    icon: Icon(_showPassword
-                        ? Icons.visibility_off
-                        : Icons.visibility),
-                    onPressed: () =>
-                        setState(() => _showPassword = !_showPassword),
-                  ),
-            onCopy: e.password.isEmpty
-                ? null
-                : () => _copy(context, e.password, 'Password', sensitive: true),
-          ),
-          _FieldRow(
-            label: 'URL',
-            value: e.url,
-            icon: Icons.link,
-            onCopy: e.url.isEmpty ? null : () => _copy(context, e.url, 'URL'),
-          ),
-          if ((e.totp ?? '').isNotEmpty) ...[
-            const Divider(indent: 16, endIndent: 16),
-            TotpCodeTile(
-              stored: e.totp!,
-              onCopy: (code) => _copy(context, code, 'Code', sensitive: true),
+          ..._typeRows(e),
+          if (e.type == EntryType.login) ...[
+            _FieldRow(
+              label: 'Username / email',
+              value: e.username,
+              icon: Icons.person_outline,
+              onCopy: e.username.isEmpty
+                  ? null
+                  : () => _copy(context, e.username, 'Username'),
             ),
+            _FieldRow(
+              label: 'Password',
+              value: e.password.isEmpty
+                  ? ''
+                  : (_showPassword
+                      ? e.password
+                      : '•' * e.password.length.clamp(0, 24)),
+              icon: Icons.lock_outline,
+              monospace: _showPassword,
+              trailing: e.password.isEmpty
+                  ? null
+                  : IconButton(
+                      icon: Icon(_showPassword
+                          ? Icons.visibility_off
+                          : Icons.visibility),
+                      onPressed: () =>
+                          setState(() => _showPassword = !_showPassword),
+                    ),
+              onCopy: e.password.isEmpty
+                  ? null
+                  : () =>
+                      _copy(context, e.password, 'Password', sensitive: true),
+            ),
+            _FieldRow(
+              label: 'URL',
+              value: e.url,
+              icon: Icons.link,
+              onCopy: e.url.isEmpty ? null : () => _copy(context, e.url, 'URL'),
+            ),
+            if ((e.totp ?? '').isNotEmpty) ...[
+              const Divider(indent: 16, endIndent: 16),
+              TotpCodeTile(
+                stored: e.totp!,
+                onCopy: (code) => _copy(context, code, 'Code', sensitive: true),
+              ),
+            ],
           ],
           _FieldRow(
             label: 'Folder',
@@ -140,7 +197,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   Future<bool?> _confirmDelete(BuildContext context) => showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('Delete login?'),
+          title: const Text('Delete item?'),
           content: const Text('This cannot be undone.'),
           actions: [
             TextButton(

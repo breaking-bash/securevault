@@ -80,6 +80,7 @@ class _VaultTabState extends State<_VaultTab> {
             e.title.toLowerCase().contains(q) ||
             e.username.toLowerCase().contains(q) ||
             e.url.toLowerCase().contains(q) ||
+            e.subtitle.toLowerCase().contains(q) ||
             e.notes.toLowerCase().contains(q))
         .toList();
   }
@@ -106,8 +107,28 @@ class _VaultTabState extends State<_VaultTab> {
               title: const Text('Add login'),
               onTap: () {
                 Navigator.pop(context);
+                Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const EntryEditScreen()));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.credit_card_outlined),
+              title: const Text('Add credit card'),
+              onTap: () {
+                Navigator.pop(context);
                 Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => const EntryEditScreen()));
+                    builder: (_) =>
+                        const EntryEditScreen(newType: EntryType.card)));
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.terminal_outlined),
+              title: const Text('Add SSH key'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) =>
+                        const EntryEditScreen(newType: EntryType.ssh)));
               },
             ),
             ListTile(
@@ -284,9 +305,7 @@ class _VaultTabState extends State<_VaultTab> {
             count: count,
             onTap: () => Navigator.of(context).push(MaterialPageRoute(
               builder: (_) => GroupListScreen(
-                  title: f.name,
-                  filter: GroupFilter.folder,
-                  folderId: f.id),
+                  title: f.name, filter: GroupFilter.folder, folderId: f.id),
             )),
           ),
         );
@@ -322,7 +341,8 @@ class _VaultTabState extends State<_VaultTab> {
     }
     return [
       if (entries.isNotEmpty) _SectionHeader('LOGINS', entries.length),
-      SliverList.list(children: entries.map((e) => _EntryRow(entry: e)).toList()),
+      SliverList.list(
+          children: entries.map((e) => _EntryRow(entry: e)).toList()),
       if (notes.isNotEmpty) _SectionHeader('SECURE NOTES', notes.length),
       SliverList.list(children: notes.map((n) => _NoteRow(note: n)).toList()),
     ];
@@ -392,8 +412,7 @@ class _VaultRow extends StatelessWidget {
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Text('$count',
-                  style: TextStyle(color: scheme.onSurfaceVariant)),
+              Text('$count', style: TextStyle(color: scheme.onSurfaceVariant)),
               const SizedBox(width: 8),
               Icon(Icons.chevron_right, color: scheme.onSurfaceVariant),
             ],
@@ -418,13 +437,19 @@ class _EntryRow extends StatelessWidget {
     return Column(
       children: [
         ListTile(
-          leading: Icon(Icons.language_outlined, color: scheme.onSurfaceVariant),
+          leading: Icon(
+              switch (entry.type) {
+                EntryType.card => Icons.credit_card_outlined,
+                EntryType.ssh => Icons.terminal_outlined,
+                EntryType.login => Icons.language_outlined,
+              },
+              color: scheme.onSurfaceVariant),
           title: Text(entry.title.isEmpty ? '(untitled)' : entry.title),
-          subtitle: entry.username.isEmpty
+          subtitle: entry.subtitle.isEmpty
               ? null
-              : Text(entry.username,
+              : Text(entry.subtitle,
                   maxLines: 1, overflow: TextOverflow.ellipsis),
-          trailing: entry.password.isEmpty
+          trailing: entry.type != EntryType.login || entry.password.isEmpty
               ? const Icon(Icons.chevron_right)
               : IconButton(
                   tooltip: 'Copy password',
@@ -458,8 +483,8 @@ class _NoteRow extends StatelessWidget {
     return Column(
       children: [
         ListTile(
-          leading:
-              Icon(Icons.sticky_note_2_outlined, color: scheme.onSurfaceVariant),
+          leading: Icon(Icons.sticky_note_2_outlined,
+              color: scheme.onSurfaceVariant),
           title: Text(note.title.isEmpty ? '(untitled)' : note.title),
           subtitle: note.body.isEmpty
               ? null
