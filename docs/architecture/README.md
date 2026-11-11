@@ -3,7 +3,7 @@
 > **Status: core implemented, unreviewed.** Crypto, key management, vault,
 > storage, sync planning and the mobile facade exist with tests, but have had no
 > independent security review, there is no server authentication (OPAQUE) yet,
-> and the desktop UI is not wired to the core. Not safe for real secrets.
+> and the desktop Secret Key is not yet kept in an OS keystore (re-entered at each unlock). Not safe for real secrets.
 
 ## Repository layout
 
@@ -12,7 +12,7 @@ The monorepo lives alongside the existing Flutter app (repo root: `lib/`,
 
 | Path | Purpose | Phase 1 state |
 |------|---------|---------------|
-| `apps/desktop` | Tauri 2 shell + React/TS/Vite UI | Runs; shows scaffold notice and one `app_info` command |
+| `apps/desktop` | Tauri 2 shell + React/TS/Vite UI | Wired to the core: create account (Secret Key shown once), unlock, lock, 5-min auto-lock, add/list/reveal/delete logins, password generator |
 | `apps/browser-extension`, `apps/mobile`, `apps/admin-console` | Future clients | Empty (`.gitkeep`) |
 | `crates/shared-types` | IDs, key/format versions | Implemented + tests |
 | `crates/crypto-engine` | AEAD / KDF / RNG | Implemented per ADR-0001; not independently reviewed |
