@@ -9,6 +9,7 @@ members = [
     "crates/storage-engine",
     "crates/sync-engine",
     "crates/platform-security",
+    "crates/mobile-ffi",
     "apps/desktop/src-tauri",
 ]
 

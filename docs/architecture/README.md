@@ -1,7 +1,9 @@
 # SecureVault Architecture (Phase 1)
 
-> **Status: scaffold only.** No cryptography, storage, sync or authentication
-> is implemented. Nothing here is production-ready or safe for real secrets.
+> **Status: core implemented, unreviewed.** Crypto, key management, vault,
+> storage, sync planning and the mobile facade exist with tests, but have had no
+> independent security review, there is no server authentication (OPAQUE) yet,
+> and the desktop UI is not wired to the core. Not safe for real secrets.
 
 ## Repository layout
 
@@ -27,6 +29,9 @@ The monorepo lives alongside the existing Flutter app (repo root: `lib/`,
 graph TD
   UI[React UI] -->|narrow Tauri commands| Shell[src-tauri]
   Shell --> VE[vault-engine]
+  FFI[mobile-ffi] --> VE
+  FFI --> SE[storage-engine]
+  SE --> VE
   VE --> KM[key-manager]
   KM --> CE[crypto-engine]
   CE --> ST[shared-types]

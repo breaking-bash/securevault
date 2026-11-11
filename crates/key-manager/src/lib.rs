@@ -101,6 +101,48 @@ pub struct AccountEnvelope {
     pub check: Sealed,
 }
 
+const ENVELOPE_MAGIC: &[u8; 4] = b"SVE1";
+
+impl AccountEnvelope {
+    /// Serializes to a stable binary form for storage.
+    pub fn to_bytes(&self) -> Vec<u8> {
+        let mut out = ENVELOPE_MAGIC.to_vec();
+        out.extend_from_slice(&self.params.memory_kib.to_be_bytes());
+        out.extend_from_slice(&self.params.iterations.to_be_bytes());
+        out.extend_from_slice(&self.params.parallelism.to_be_bytes());
+        out.push(self.salt.len() as u8);
+        out.extend_from_slice(&self.salt);
+        out.extend_from_slice(&self.check.to_wire());
+        out
+    }
+
+    /// Parses [`Self::to_bytes`] output. Parameters are validated when the
+    /// account is unlocked, so weakened parameters are rejected there.
+    pub fn from_bytes(bytes: &[u8]) -> Result<Self, KeyError> {
+        const BAD: KeyError = KeyError::InvalidInput("malformed account envelope");
+        if bytes.len() < 17 || &bytes[..4] != ENVELOPE_MAGIC {
+            return Err(BAD);
+        }
+        let word =
+            |i: usize| u32::from_be_bytes([bytes[i], bytes[i + 1], bytes[i + 2], bytes[i + 3]]);
+        let params = Argon2idParams {
+            memory_kib: word(4),
+            iterations: word(8),
+            parallelism: word(12),
+        };
+        let salt_len = usize::from(bytes[16]);
+        let rest = bytes.get(17..).ok_or(BAD)?;
+        if salt_len == 0 || rest.len() <= salt_len {
+            return Err(BAD);
+        }
+        let (salt, check) = rest.split_at(salt_len);
+        Ok(Self {
+            salt: salt.to_vec(),
+            params,
+            check: Sealed::from_wire(check)?,
+        })
+    }
+}
 /// In-memory key manager holding wrapped vault keys.
 pub struct SoftwareKeyManager {
     envelope: AccountEnvelope,
@@ -200,6 +242,13 @@ impl SoftwareKeyManager {
     /// Non-secret account material to persist.
     pub fn envelope(&self) -> &AccountEnvelope {
         &self.envelope
+    }
+
+    /// Identifiers of all vaults with keys, sorted.
+    pub fn vault_ids(&self) -> Vec<VaultId> {
+        let mut ids: Vec<VaultId> = self.vaults.keys().cloned().collect();
+        ids.sort_by(|a, b| a.as_str().cmp(b.as_str()));
+        ids
     }
 
     /// Wrapped vault keys, oldest first, for persistence.
@@ -503,5 +552,37 @@ mod tests {
     fn debug_does_not_leak() {
         let d = format!("{:?}", mgr());
         assert!(!d.contains("correct") && !d.contains("secret_key"));
+    }
+
+    #[test]
+    fn envelope_serialization_roundtrips_and_rejects_garbage() {
+        let m = mgr();
+        let bytes = m.envelope().to_bytes();
+        assert_eq!(&AccountEnvelope::from_bytes(&bytes).unwrap(), m.envelope());
+        let mut reopened =
+            SoftwareKeyManager::open(AccountEnvelope::from_bytes(&bytes).unwrap(), &SK).unwrap();
+        reopened.unlock(b"correct horse").unwrap();
+        assert!(AccountEnvelope::from_bytes(&bytes[..10]).is_err());
+        assert!(AccountEnvelope::from_bytes(&[]).is_err());
+        let mut bad = bytes.clone();
+        bad[0] = b'X';
+        assert!(AccountEnvelope::from_bytes(&bad).is_err());
+    }
+
+    #[test]
+    fn downgraded_params_in_stored_envelope_are_rejected() {
+        let m = mgr();
+        let mut env = m.envelope().clone();
+        env.params.memory_kib = 8;
+        let mut weak = SoftwareKeyManager::open(env, &SK).unwrap();
+        assert!(weak.unlock(b"correct horse").is_err());
+    }
+
+    #[test]
+    fn vault_ids_are_listed_sorted() {
+        let mut m = mgr();
+        m.create_vault(&vid("b")).unwrap();
+        m.create_vault(&vid("a")).unwrap();
+        assert_eq!(m.vault_ids(), vec![vid("a"), vid("b")]);
     }
 }
