@@ -1,6 +1,6 @@
 [package]
 name = "vault-engine"
-description = "Vault engine INTERFACE ONLY. No vault implementation yet."
+description = "SecureVault vault engine: seals items with per-vault keys before persisting. Pending independent review."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,6 +9,8 @@ publish.workspace = true
 [dependencies]
 shared-types.workspace = true
 key-manager.workspace = true
+crypto-engine.workspace = true
+zeroize = "1"
 thiserror.workspace = true
 
 [lints]
