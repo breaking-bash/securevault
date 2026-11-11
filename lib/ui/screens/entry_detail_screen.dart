@@ -38,7 +38,9 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   Widget _row(String id, String label, String value, FieldKind kind,
       {bool masked = false, bool mono = false}) {
     if (value.isEmpty) return const SizedBox.shrink();
-    final hidden = masked && !_revealed.contains(id);
+    final hidden = masked &&
+        !_revealed.contains(id) &&
+        !context.read<VaultState>().settings.alwaysShowPasswords;
     final isOtp = kind == FieldKind.otp;
     if (isOtp) {
       return TotpCodeTile(

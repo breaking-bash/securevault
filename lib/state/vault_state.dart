@@ -15,6 +15,7 @@ import '../services/biometric_service.dart';
 import '../services/crypto_service.dart';
 import '../services/database_service.dart';
 import '../services/secret_key_service.dart';
+import '../services/screen_security.dart';
 import '../services/settings_service.dart';
 
 /// Central app controller. Holds the in-memory master key while unlocked,
@@ -92,6 +93,7 @@ class VaultState extends ChangeNotifier {
   Future<void> init() async {
     DatabaseService.initPlatform();
     settings = await SettingsService.instance.load();
+    ScreenSecurity.apply(settings.blockScreenshots);
     accountsList = await _accounts.listAccounts();
     notifyListeners();
   }
@@ -549,6 +551,7 @@ class VaultState extends ChangeNotifier {
 
   Future<void> updateSettings(AppSettings s) async {
     settings = s;
+    ScreenSecurity.apply(s.blockScreenshots);
     await SettingsService.instance.save(s);
     _restartLockTimer();
     notifyListeners();

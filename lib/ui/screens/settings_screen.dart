@@ -1,7 +1,7 @@
-﻿import 'dart:io' show Platform;
-import 'package:flutter/services.dart';
+import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/biometric_service.dart';
@@ -12,14 +12,212 @@ import '../widgets/emergency_kit.dart';
 import 'import_screen.dart';
 import 'link_send_screen.dart';
 
-class SettingsScreen extends StatefulWidget {
+const _repoUrl = 'https://github.com/itsnavin/securevault';
+
+/// 1Password-style settings hub: one row per category, each opening a page.
+class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  Widget build(BuildContext context) {
+    Widget row(IconData icon, Color color, String title, Widget page) =>
+        _HubTile(
+            icon: icon,
+            color: color,
+            title: title,
+            onTap: () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => page)));
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () => Navigator.of(context).pop()),
+        title: const Text('Settings'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.only(top: 8, bottom: 24),
+        children: [
+          row(Icons.person_outline, const Color(0xFF2DD4A7), 'Accounts',
+              const _AccountsPage()),
+          row(Icons.tune, const Color(0xFF3FC3EE), 'General',
+              const _GeneralPage()),
+          row(Icons.lock_outline, const Color(0xFFFFB74D), 'Security',
+              const _SecurityPage()),
+          row(Icons.privacy_tip_outlined, const Color(0xFF2DD4A7), 'Privacy',
+              const _PrivacyPage()),
+          if (Platform.isAndroid)
+            row(Icons.auto_fix_high_outlined, const Color(0xFFB8B8F0),
+                'Autofill', const _AutofillPage()),
+          row(Icons.settings_suggest_outlined, const Color(0xFF3FC3EE),
+              'Advanced', const _AdvancedPage()),
+          row(Icons.info_outline, const Color(0xFF3FC3EE), 'About',
+              const _AboutPage()),
+        ],
+      ),
+    );
+  }
 }
 
-class _SettingsScreenState extends State<SettingsScreen> {
+class _HubTile extends StatelessWidget {
+  final IconData icon;
+  final Color color;
+  final String title;
+  final VoidCallback onTap;
+  const _HubTile(
+      {required this.icon,
+      required this.color,
+      required this.title,
+      required this.onTap});
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        leading: Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(18)),
+          child: Icon(icon, size: 20, color: color),
+        ),
+        title: Text(title),
+        onTap: onTap,
+      );
+}
+
+/// Shared scaffold for every settings sub-page.
+class _Page extends StatelessWidget {
+  final String title;
+  final List<Widget> children;
+  const _Page({required this.title, required this.children});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: Text(title)),
+        body: ListView(
+            padding: const EdgeInsets.only(bottom: 24), children: children),
+      );
+}
+
+class _Header extends StatelessWidget {
+  final String text;
+  const _Header(this.text);
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 4),
+        child: Text(text.toUpperCase(),
+            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                letterSpacing: 1,
+                fontWeight: FontWeight.bold)),
+      );
+}
+
+// ------------------------------------------------------------------ Accounts
+class _AccountsPage extends StatelessWidget {
+  const _AccountsPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<VaultState>();
+    return _Page(title: 'Accounts', children: [
+      ListTile(
+        leading: CircleAvatar(
+            child: Text((state.account?.name ?? '?')
+                .characters
+                .first
+                .toUpperCase())),
+        title: Text(state.account?.name ?? 'SecureVault'),
+        subtitle: const Text('Signed in on this device'),
+      ),
+      const _Header('Sign-in & recovery'),
+      ListTile(
+        leading: const Icon(Icons.password_outlined),
+        title: const Text('Change master password'),
+        subtitle: const Text('Re-encrypts the whole vault'),
+        onTap: () => _changeMasterPassword(context),
+      ),
+      ListTile(
+        leading: const Icon(Icons.vpn_key_outlined),
+        title: Text(state.sessionSecretKey != null
+            ? 'Secret Key enabled'
+            : 'Enable Secret Key'),
+        subtitle: Text(state.sessionSecretKey != null
+            ? 'Shown only once. Lost it? Link a new device with a QR code.'
+            : 'Required with your password on new devices'),
+        onTap: state.sessionSecretKey != null
+            ? () => _secretKeyInfo(context)
+            : () => _secretKey(context),
+      ),
+      if (Platform.isAndroid || Platform.isIOS)
+        ListTile(
+          leading: const Icon(Icons.qr_code_scanner),
+          title: const Text('Set up another device'),
+          subtitle: const Text('Scan a link code over your local network'),
+          onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LinkSendScreen())),
+        ),
+      const _Header('Session'),
+      ListTile(
+        leading: const Icon(Icons.switch_account_outlined),
+        title: const Text('Switch account'),
+        onTap: () {
+          state.signOut();
+          Navigator.of(context).popUntil((r) => r.isFirst);
+        },
+      ),
+      ListTile(
+        leading: const Icon(Icons.lock_outline),
+        title: const Text('Lock now'),
+        onTap: () {
+          state.lock();
+          Navigator.of(context).popUntil((r) => r.isFirst);
+        },
+      ),
+    ]);
+  }
+}
+
+// ------------------------------------------------------------------- General
+class _GeneralPage extends StatelessWidget {
+  const _GeneralPage();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<VaultState>();
+    final s = state.settings;
+    return _Page(title: 'General', children: [
+      const _Header('Appearance'),
+      ListTile(
+        leading: const Icon(Icons.brightness_6_outlined),
+        title: const Text('Theme'),
+        trailing: DropdownButton<ThemeMode>(
+          value: s.themeMode,
+          underline: const SizedBox.shrink(),
+          onChanged: (m) {
+            if (m == null) return;
+            state.updateSettings(s.copyWith(themeMode: m));
+          },
+          items: const [
+            DropdownMenuItem(value: ThemeMode.system, child: Text('System')),
+            DropdownMenuItem(value: ThemeMode.light, child: Text('Light')),
+            DropdownMenuItem(value: ThemeMode.dark, child: Text('Dark')),
+          ],
+        ),
+      ),
+    ]);
+  }
+}
+
+// ------------------------------------------------------------------ Security
+class _SecurityPage extends StatefulWidget {
+  const _SecurityPage();
+  @override
+  State<_SecurityPage> createState() => _SecurityPageState();
+}
+
+class _SecurityPageState extends State<_SecurityPage> {
   bool _bioAvailable = false;
   bool _bioEnabled = false;
   bool _bioLoading = true;
@@ -46,188 +244,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _toggleBiometric(bool value) async {
     final state = context.read<VaultState>();
+    final messenger = ScaffoldMessenger.of(context);
     if (value) {
       final ok = await state.enableBiometricForCurrentAccount();
       if (!mounted) return;
-      if (ok) {
-        setState(() => _bioEnabled = true);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Biometric unlock enabled for this account')));
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('Could not enable biometric unlock')));
-      }
+      if (ok) setState(() => _bioEnabled = true);
+      messenger.showSnackBar(SnackBar(
+          content: Text(ok
+              ? 'Biometric unlock enabled for this account'
+              : 'Could not enable biometric unlock')));
     } else {
       await state.disableBiometricForCurrentAccount();
       if (!mounted) return;
       setState(() => _bioEnabled = false);
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+      messenger.showSnackBar(const SnackBar(
           content: Text('Biometric unlock disabled; stored secret removed')));
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<VaultState>();
-    final s = state.settings;
-    // "Immediately" is represented by -1 in the auto-lock dropdown.
-    final autoLockValue = s.autoLockImmediate ? -1 : s.autoLockMinutes;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Settings')),
-      body: ListView(
-        children: [
-          const _SectionHeader('Appearance'),
-          _Card(children: [
-          ListTile(
-            leading: const Icon(Icons.brightness_6_outlined),
-            title: const Text('Theme'),
-            trailing: DropdownButton<ThemeMode>(
-              value: s.themeMode,
-              onChanged: (m) {
-                if (m == null) return;
-                state.updateSettings(s.copyWith(themeMode: m));
-              },
-              items: const [
-                DropdownMenuItem(value: ThemeMode.system, child: Text('System')),
-                DropdownMenuItem(value: ThemeMode.light, child: Text('Light')),
-                DropdownMenuItem(value: ThemeMode.dark, child: Text('Dark')),
-              ],
-            ),
-          ),
-          SwitchListTile(
-            secondary: const Icon(Icons.language),
-            title: const Text('Show website icons'),
-            subtitle: const Text(
-                'Fetches site icons from the web (the domain is sent to an icon service)'),
-            value: s.fetchIcons,
-            onChanged: (v) => state.updateSettings(s.copyWith(fetchIcons: v)),
-          ),
-          ]),
-          const _SectionHeader('Security'),
-          _Card(children: [
-          ListTile(
-            leading: const Icon(Icons.timer_outlined),
-            title: const Text('Auto-lock'),
-            subtitle: Text(_autoLockLabel(s)),
-            trailing: DropdownButton<int>(
-              value: autoLockValue,
-              onChanged: (v) {
-                if (v == null) return;
-                state.updateSettings(s.copyWith(autoLockImmediate: v == -1, autoLockMinutes: v == -1 ? 0 : v));
-              },
-              items: const [
-                DropdownMenuItem(value: -1, child: Text('Immediately')),
-                DropdownMenuItem(value: 0, child: Text('Never')),
-                DropdownMenuItem(value: 1, child: Text('1 min')),
-                DropdownMenuItem(value: 3, child: Text('3 min')),
-                DropdownMenuItem(value: 5, child: Text('5 min')),
-                DropdownMenuItem(value: 15, child: Text('15 min')),
-              ],
-            ),
-          ),
-          _buildBiometricTile(context),
-          ListTile(
-            leading: const Icon(Icons.content_paste_off_outlined),
-            title: const Text('Clear clipboard after copy'),
-            subtitle: Text(s.clipboardClearSeconds == 0
-                ? 'Never'
-                : '${s.clipboardClearSeconds} seconds'),
-            trailing: DropdownButton<int>(
-              value: s.clipboardClearSeconds,
-              onChanged: (v) {
-                if (v == null) return;
-                state.updateSettings(s.copyWith(clipboardClearSeconds: v));
-              },
-              items: const [
-                DropdownMenuItem(value: 0, child: Text('Never')),
-                DropdownMenuItem(value: 15, child: Text('15 s')),
-                DropdownMenuItem(value: 30, child: Text('30 s')),
-                DropdownMenuItem(value: 60, child: Text('60 s')),
-              ],
-            ),
-          ),
-          ListTile(
-            leading: const Icon(Icons.password_outlined),
-            title: const Text('Change master password'),
-            subtitle: const Text('Re-encrypts the whole vault'),
-            onTap: () => _changeMasterPassword(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.vpn_key_outlined),
-            title: Text(state.sessionSecretKey != null
-                ? 'Secret Key enabled'
-                : 'Enable Secret Key'),
-            subtitle: Text(state.sessionSecretKey != null
-                ? 'Shown only once. Lost it? Link a new device with a QR code.'
-                : 'Required with your password on new devices'),
-            onTap: state.sessionSecretKey != null
-                ? () => _secretKeyInfo(context)
-                : () => _secretKey(context),
-          ),
-          ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: const Text('Lock vault now'),
-            onTap: () {
-              state.lock();
-              Navigator.of(context).popUntil((r) => r.isFirst);
-            },
-          ),
-          ]),
-          const _SectionHeader('Autofill & devices'),
-          _Card(children: [
-            if (Platform.isAndroid) const _AutofillTile(),
-          if (Platform.isAndroid || Platform.isIOS)
-            ListTile(
-              leading: const Icon(Icons.qr_code_scanner),
-              title: const Text('Send vault to another device'),
-              subtitle: const Text('Scan a link code over your local network'),
-              onTap: () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => const LinkSendScreen())),
-            ),
-          ]),
-          const _SectionHeader('Data'),
-          _Card(children: [
-          ListTile(
-            leading: const Icon(Icons.file_download_outlined),
-            title: const Text('Import from another password manager'),
-            subtitle: const Text('1Password, Bitwarden, LastPass, Chrome, Dashlane, KeePass, CSV'),
-            onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ImportScreen())),
-          ),
-          ]),
-          const _SectionHeader('About'),
-          _Card(children: [
-            const ListTile(
-              leading: Icon(Icons.shield_outlined),
-              title: Text('SecureVault'),
-              subtitle: Text('Your passwords, secured on your device.'),
-            ),
-            const ListTile(
-              leading: Icon(Icons.person_outline),
-              title: Text('Developer'),
-              subtitle: Text('@itsnavin'),
-            ),
-            Builder(
-              builder: (ctx) => ListTile(
-                leading: const Icon(Icons.code),
-                title: const Text('Source code'),
-                subtitle: const Text('github.com/itsnavin/securevault'),
-                trailing: const Icon(Icons.copy, size: 18),
-                onTap: () async {
-                  await Clipboard.setData(const ClipboardData(
-                      text: 'https://github.com/itsnavin/securevault'));
-                  if (ctx.mounted) {
-                    ScaffoldMessenger.of(ctx).showSnackBar(
-                        const SnackBar(content: Text('Link copied')));
-                  }
-                },
-              ),
-            ),
-          ]),
-          const SizedBox(height: 24),        ],
-      ),
-    );
   }
 
   String _autoLockLabel(AppSettings s) {
@@ -236,194 +268,163 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return 'After ${s.autoLockMinutes} minute(s) idle';
   }
 
-  Widget _buildBiometricTile(BuildContext context) {
+  Widget _biometricTile() {
     if (_bioLoading) {
       return const ListTile(
         leading: Icon(Icons.fingerprint),
-        title: Text('Biometric unlock'),
-        subtitle: Text('Checking availabilityâ€¦'),
+        title: Text('Unlock with biometrics'),
+        subtitle: Text('Checking availability…'),
       );
     }
     if (!_bioAvailable) {
       return const ListTile(
         leading: Icon(Icons.fingerprint),
-        title: Text('Biometric unlock'),
+        title: Text('Unlock with biometrics'),
         subtitle: Text('Not available on this device'),
         enabled: false,
       );
     }
     return SwitchListTile(
       secondary: const Icon(Icons.fingerprint),
-      title: const Text('Biometric unlock'),
+      title: const Text('Unlock with biometrics'),
       subtitle: const Text(
-          'Unlock with fingerprint/face. Master password stored in the '
-          'biometric-gated OS keystore.'),
+          'Master password is kept in the biometric-gated OS keystore.'),
       value: _bioEnabled,
       onChanged: _toggleBiometric,
     );
   }
 
-  Future<void> _secretKeyInfo(BuildContext context) => showDialog<void>(
-        context: context,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Secret Key'),
-          content: const Text(
-              'Your Secret Key was shown once when it was created and is not '
-              'displayed again. If you lost your Emergency Kit PDF, sign in on '
-              'a new device by scanning a QR code from a device that is '
-              'already signed in (Link from another device).'),
-          actions: [
-            FilledButton(
-                onPressed: () => Navigator.of(ctx).pop(),
-                child: const Text('OK')),
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<VaultState>();
+    final s = state.settings;
+    final autoLockValue = s.autoLockImmediate ? -1 : s.autoLockMinutes;
+
+    return _Page(title: 'Security', children: [
+      const _Header('Unlock'),
+      _biometricTile(),
+      const _Header('Auto-lock'),
+      SwitchListTile(
+        secondary: const Icon(Icons.lock_clock_outlined),
+        title: const Text('Lock when app is left'),
+        subtitle: const Text('Locks the instant you switch away'),
+        value: s.autoLockImmediate,
+        onChanged: (v) => state.updateSettings(s.copyWith(
+            autoLockImmediate: v,
+            autoLockMinutes: v ? 0 : (s.autoLockMinutes == 0 ? 3 : s.autoLockMinutes))),
+      ),
+      ListTile(
+        leading: const Icon(Icons.timer_outlined),
+        title: const Text('Auto-lock timer'),
+        subtitle: Text(_autoLockLabel(s)),
+        trailing: DropdownButton<int>(
+          value: autoLockValue,
+          underline: const SizedBox.shrink(),
+          onChanged: (v) {
+            if (v == null) return;
+            state.updateSettings(s.copyWith(
+                autoLockImmediate: v == -1,
+                autoLockMinutes: v == -1 ? 0 : v));
+          },
+          items: const [
+            DropdownMenuItem(value: -1, child: Text('Immediately')),
+            DropdownMenuItem(value: 0, child: Text('Never')),
+            DropdownMenuItem(value: 1, child: Text('1 min')),
+            DropdownMenuItem(value: 3, child: Text('3 min')),
+            DropdownMenuItem(value: 5, child: Text('5 min')),
+            DropdownMenuItem(value: 15, child: Text('15 min')),
           ],
         ),
-      );
-
-  Future<void> _secretKey(BuildContext context) async {
-    final state = context.read<VaultState>();
-    final pw = state.sessionMasterPassword;
-    if (pw == null) return;
-    final fresh = SecretKeyService.instance.generate();
-    final ok = await state.changeMasterPassword(
-        currentPassword: pw, newPassword: pw, newSecretKey: fresh);
-    if (!ok || !context.mounted) return;
-    await showEmergencyKitDialog(context,
-        accountName: state.account?.name ?? 'SecureVault', secretKey: fresh);
-  }
-  Future<void> _changeMasterPassword(BuildContext context) async {
-    final current = TextEditingController();
-    final next = TextEditingController();
-    final confirm = TextEditingController();
-    final formKey = GlobalKey<FormState>();
-    String? error;
-
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setLocal) {
-          bool busy = false;
-          Future<void> submit() async {
-            if (!formKey.currentState!.validate()) return;
-            setLocal(() => busy = true);
-            final ok = await ctx.read<VaultState>().changeMasterPassword(
-                  currentPassword: current.text,
-                  newPassword: next.text,
-                );
-            if (!ctx.mounted) return;
-            if (ok) {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-                  content: Text('Master password changed & vault re-encrypted')));
-            } else {
-              setLocal(() {
-                busy = false;
-                error = 'Current password is incorrect';
-              });
-            }
-          }
-
-          return AlertDialog(
-            title: const Text('Change master password'),
-            content: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextFormField(
-                    controller: current,
-                    obscureText: true,
-                    decoration: InputDecoration(
-                        labelText: 'Current password', errorText: error),
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: next,
-                    obscureText: true,
-                    decoration: const InputDecoration(labelText: 'New password'),
-                    validator: (v) => (v == null || v.length < 8)
-                        ? 'At least 8 characters'
-                        : null,
-                  ),
-                  const SizedBox(height: 10),
-                  TextFormField(
-                    controller: confirm,
-                    obscureText: true,
-                    decoration:
-                        const InputDecoration(labelText: 'Confirm new password'),
-                    validator: (v) =>
-                        v != next.text ? 'Passwords do not match' : null,
-                  ),
-                ],
-              ),
-            ),
-            actions: [
-              TextButton(
-                  onPressed: busy ? null : () => Navigator.pop(ctx),
-                  child: const Text('Cancel')),
-              FilledButton(
-                onPressed: busy ? null : submit,
-                child: Text(busy ? 'Workingâ€¦' : 'Change'),
-              ),
-            ],
-          );
-        },
       ),
-    );
-  }
-}
-
-/// Rounded card that groups a settings section's tiles.
-class _Card extends StatelessWidget {
-  final List<Widget> children;
-  const _Card({required this.children});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Material(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(16),
-        clipBehavior: Clip.antiAlias,
-        child: Column(children: [
-          for (var i = 0; i < children.length; i++) ...[
-            if (i > 0) const Divider(height: 0, indent: 56),
-            children[i],
+      const _Header('Clipboard'),
+      ListTile(
+        leading: const Icon(Icons.content_paste_off_outlined),
+        title: const Text('Clear clipboard'),
+        subtitle: Text(s.clipboardClearSeconds == 0
+            ? 'Never'
+            : 'Removed ${s.clipboardClearSeconds} seconds after you copy'),
+        trailing: DropdownButton<int>(
+          value: s.clipboardClearSeconds,
+          underline: const SizedBox.shrink(),
+          onChanged: (v) {
+            if (v == null) return;
+            state.updateSettings(s.copyWith(clipboardClearSeconds: v));
+          },
+          items: const [
+            DropdownMenuItem(value: 0, child: Text('Never')),
+            DropdownMenuItem(value: 15, child: Text('15 s')),
+            DropdownMenuItem(value: 30, child: Text('30 s')),
+            DropdownMenuItem(value: 60, child: Text('60 s')),
           ],
-        ]),
+        ),
       ),
-    );
+      const _Header('Concealed fields'),
+      SwitchListTile(
+        secondary: const Icon(Icons.visibility_outlined),
+        title: const Text('Always show passwords'),
+        subtitle: const Text('Off keeps passwords hidden until you reveal them'),
+        value: s.alwaysShowPasswords,
+        onChanged: (v) =>
+            state.updateSettings(s.copyWith(alwaysShowPasswords: v)),
+      ),
+    ]);
   }
 }
 
-class _SectionHeader extends StatelessWidget {
-  final String text;
-  const _SectionHeader(this.text);
+// ------------------------------------------------------------------- Privacy
+class _PrivacyPage extends StatelessWidget {
+  const _PrivacyPage();
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 20, 16, 6),
-      child: Text(
-        text.toUpperCase(),
-        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-            color: Theme.of(context).colorScheme.primary,
-            letterSpacing: 1,
-            fontWeight: FontWeight.bold),
+    final state = context.watch<VaultState>();
+    final s = state.settings;
+    return _Page(title: 'Privacy', children: [
+      const _Header('Screen'),
+      if (Platform.isAndroid)
+        SwitchListTile(
+          secondary: const Icon(Icons.screenshot_monitor_outlined),
+          title: const Text('Block screenshots'),
+          subtitle: const Text(
+              'Prevents screenshots, screen recording and the app preview in recent apps'),
+          value: s.blockScreenshots,
+          onChanged: (v) =>
+              state.updateSettings(s.copyWith(blockScreenshots: v)),
+        )
+      else
+        const ListTile(
+          leading: Icon(Icons.screenshot_monitor_outlined),
+          title: Text('Block screenshots'),
+          subtitle: Text('Available on Android'),
+          enabled: false,
+        ),
+      const _Header('Website icons'),
+      SwitchListTile(
+        secondary: const Icon(Icons.language),
+        title: const Text('Show website icons'),
+        subtitle: const Text(
+            'Fetches site icons from the web (the domain is sent to an icon service)'),
+        value: s.fetchIcons,
+        onChanged: (v) => state.updateSettings(s.copyWith(fetchIcons: v)),
       ),
-    );
+      const _Header('Data collection'),
+      const ListTile(
+        leading: Icon(Icons.analytics_outlined),
+        title: Text('No analytics or tracking'),
+        subtitle: Text('SecureVault does not collect usage data.'),
+      ),
+    ]);
   }
 }
 
-
-class _AutofillTile extends StatefulWidget {
-  const _AutofillTile();
+// ------------------------------------------------------------------ Autofill
+class _AutofillPage extends StatefulWidget {
+  const _AutofillPage();
   @override
-  State<_AutofillTile> createState() => _AutofillTileState();
+  State<_AutofillPage> createState() => _AutofillPageState();
 }
 
-class _AutofillTileState extends State<_AutofillTile>
+class _AutofillPageState extends State<_AutofillPage>
     with WidgetsBindingObserver {
   static const _ch = MethodChannel('securevault/autofill');
   bool _on = false;
@@ -454,7 +455,9 @@ class _AutofillTileState extends State<_AutofillTile>
   }
 
   @override
-  Widget build(BuildContext context) => ListTile(
+  Widget build(BuildContext context) {
+    return _Page(title: 'Autofill', children: [
+      ListTile(
         leading: const Icon(Icons.auto_fix_high_outlined),
         title: const Text('Autofill service'),
         subtitle: Text(_on
@@ -462,5 +465,194 @@ class _AutofillTileState extends State<_AutofillTile>
             : 'Turn on to get login suggestions in other apps'),
         trailing: Text(_on ? 'On' : 'Set up'),
         onTap: _on ? null : () => _ch.invokeMethod('openSettings'),
-      );
+      ),
+      if (!_on) ...[
+        const _Header('To set it up'),
+        const ListTile(
+            leading: CircleAvatar(radius: 12, child: Text('1')),
+            title: Text('Tap "Autofill service" above')),
+        const ListTile(
+            leading: CircleAvatar(radius: 12, child: Text('2')),
+            title: Text('Select SecureVault from the list')),
+        const ListTile(
+            leading: CircleAvatar(radius: 12, child: Text('3')),
+            title: Text('Come back to SecureVault')),
+      ],
+    ]);
+  }
+}
+
+// ------------------------------------------------------------------ Advanced
+class _AdvancedPage extends StatelessWidget {
+  const _AdvancedPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return _Page(title: 'Advanced', children: [
+      const _Header('Data'),
+      ListTile(
+        leading: const Icon(Icons.file_download_outlined),
+        title: const Text('Import from another password manager'),
+        subtitle: const Text(
+            '1Password, Bitwarden, LastPass, Chrome, Dashlane, KeePass, CSV'),
+        onTap: () => Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const ImportScreen())),
+      ),
+      if (Platform.isAndroid || Platform.isIOS)
+        ListTile(
+          leading: const Icon(Icons.qr_code_scanner),
+          title: const Text('Send vault to another device'),
+          subtitle: const Text('Scan a link code over your local network'),
+          onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => const LinkSendScreen())),
+        ),
+    ]);
+  }
+}
+
+// --------------------------------------------------------------------- About
+class _AboutPage extends StatelessWidget {
+  const _AboutPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return _Page(title: 'About', children: [
+      const ListTile(
+        leading: Icon(Icons.shield_outlined),
+        title: Text('SecureVault'),
+        subtitle: Text('Your passwords, secured on your device.'),
+      ),
+      const ListTile(
+        leading: Icon(Icons.person_outline),
+        title: Text('Developer'),
+        subtitle: Text('@itsnavin'),
+      ),
+      ListTile(
+        leading: const Icon(Icons.code),
+        title: const Text('Source code'),
+        subtitle: const Text('github.com/itsnavin/securevault'),
+        trailing: const Icon(Icons.copy, size: 18),
+        onTap: () async {
+          await Clipboard.setData(const ClipboardData(text: _repoUrl));
+          if (context.mounted) {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(const SnackBar(content: Text('Link copied')));
+          }
+        },
+      ),
+    ]);
+  }
+}
+
+// ------------------------------------------------------------------- Actions
+Future<void> _secretKeyInfo(BuildContext context) => showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Secret Key'),
+        content: const Text(
+            'Your Secret Key was shown once when it was created and is not '
+            'displayed again. If you lost your Emergency Kit PDF, sign in on '
+            'a new device by scanning a QR code from a device that is '
+            'already signed in (Link from another device).'),
+        actions: [
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('OK')),
+        ],
+      ),
+    );
+
+Future<void> _secretKey(BuildContext context) async {
+  final state = context.read<VaultState>();
+  final pw = state.sessionMasterPassword;
+  if (pw == null) return;
+  final fresh = SecretKeyService.instance.generate();
+  final ok = await state.changeMasterPassword(
+      currentPassword: pw, newPassword: pw, newSecretKey: fresh);
+  if (!ok || !context.mounted) return;
+  await showEmergencyKitDialog(context,
+      accountName: state.account?.name ?? 'SecureVault', secretKey: fresh);
+}
+
+Future<void> _changeMasterPassword(BuildContext context) async {
+  final current = TextEditingController();
+  final next = TextEditingController();
+  final confirm = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+  String? error;
+  bool busy = false;
+
+  await showDialog<void>(
+    context: context,
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setLocal) {
+        Future<void> submit() async {
+          if (!formKey.currentState!.validate()) return;
+          setLocal(() => busy = true);
+          final ok = await ctx.read<VaultState>().changeMasterPassword(
+                currentPassword: current.text,
+                newPassword: next.text,
+              );
+          if (!ctx.mounted) return;
+          if (ok) {
+            Navigator.pop(ctx);
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                  content:
+                      Text('Master password changed & vault re-encrypted')));
+            }
+          } else {
+            setLocal(() {
+              busy = false;
+              error = 'Current password is incorrect';
+            });
+          }
+        }
+
+        return AlertDialog(
+          title: const Text('Change master password'),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: current,
+                  obscureText: true,
+                  decoration: InputDecoration(
+                      labelText: 'Current password', errorText: error),
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: next,
+                  obscureText: true,
+                  decoration: const InputDecoration(labelText: 'New password'),
+                  validator: (v) =>
+                      (v == null || v.length < 8) ? 'At least 8 characters' : null,
+                ),
+                const SizedBox(height: 10),
+                TextFormField(
+                  controller: confirm,
+                  obscureText: true,
+                  decoration:
+                      const InputDecoration(labelText: 'Confirm new password'),
+                  validator: (v) =>
+                      v != next.text ? 'Passwords do not match' : null,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+                onPressed: busy ? null : () => Navigator.pop(ctx),
+                child: const Text('Cancel')),
+            FilledButton(
+              onPressed: busy ? null : submit,
+              child: Text(busy ? 'Working…' : 'Change'),
+            ),
+          ],
+        );
+      },
+    ),
+  );
 }

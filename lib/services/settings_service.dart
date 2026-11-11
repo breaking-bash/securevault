@@ -18,6 +18,10 @@ class AppSettings {
   // Watchtower alerts the user dismissed, as "<entryId>|<issue>".
   Set<String> ignoredAlerts;
   bool fetchIcons;
+  // Android FLAG_SECURE: blocks screenshots, recording and the recents preview.
+  bool blockScreenshots;
+  // When false, password fields stay masked until revealed.
+  bool alwaysShowPasswords;
   // Most recently opened entry ids, newest first.
   List<String> recentIds;
 
@@ -26,6 +30,8 @@ class AppSettings {
     Set<String>? hiddenHomeSections,
     Set<String>? ignoredAlerts,
     this.fetchIcons = true,
+    this.blockScreenshots = true,
+    this.alwaysShowPasswords = false,
     this.themeMode = ThemeMode.system,
     this.autoLockMinutes = 3,
     this.autoLockImmediate = false,
@@ -40,6 +46,8 @@ class AppSettings {
     bool? autoLockImmediate,
     int? clipboardClearSeconds,
     bool? fetchIcons,
+    bool? blockScreenshots,
+    bool? alwaysShowPasswords,
   }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
@@ -47,6 +55,8 @@ class AppSettings {
         autoLockImmediate: autoLockImmediate ?? this.autoLockImmediate,
         clipboardClearSeconds: clipboardClearSeconds ?? this.clipboardClearSeconds,
         fetchIcons: fetchIcons ?? this.fetchIcons,
+        blockScreenshots: blockScreenshots ?? this.blockScreenshots,
+        alwaysShowPasswords: alwaysShowPasswords ?? this.alwaysShowPasswords,
         hiddenHomeSections: {...hiddenHomeSections},
         ignoredAlerts: {...ignoredAlerts},
         recentIds: [...recentIds],
@@ -60,6 +70,8 @@ class AppSettings {
         'hiddenHomeSections': hiddenHomeSections.toList(),
         'ignoredAlerts': ignoredAlerts.toList(),
         'fetchIcons': fetchIcons,
+        'blockScreenshots': blockScreenshots,
+        'alwaysShowPasswords': alwaysShowPasswords,
         'recentIds': recentIds,
       };
 
@@ -74,6 +86,8 @@ class AppSettings {
         hiddenHomeSections:
             ((j['hiddenHomeSections'] ?? const []) as List).cast<String>().toSet(),
         fetchIcons: (j['fetchIcons'] ?? true) as bool,
+        blockScreenshots: (j['blockScreenshots'] ?? true) as bool,
+        alwaysShowPasswords: (j['alwaysShowPasswords'] ?? false) as bool,
         recentIds: ((j['recentIds'] ?? const []) as List).cast<String>().toList(),
         ignoredAlerts:
             ((j['ignoredAlerts'] ?? const []) as List).cast<String>().toSet(),

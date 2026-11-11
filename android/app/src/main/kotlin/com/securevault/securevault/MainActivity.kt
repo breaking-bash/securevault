@@ -29,6 +29,12 @@ class MainActivity : FlutterFragmentActivity() {
                         val m = getSystemService(AutofillManager::class.java)
                         result.success(m?.hasEnabledAutofillServices() == true)
                     }
+                    "setSecure" -> {
+                        val on = call.arguments as? Boolean ?: true
+                        if (on) window.addFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        else window.clearFlags(WindowManager.LayoutParams.FLAG_SECURE)
+                        result.success(null)
+                    }
                     "openSettings" -> {
                         startActivity(
                             Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE)
