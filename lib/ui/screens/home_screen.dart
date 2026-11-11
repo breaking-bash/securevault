@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -897,7 +898,10 @@ class _PinnedCardState extends State<_PinnedCard> {
       final left = TotpService.secondsRemaining(_cfg!.period);
       value = Row(children: [
         Text(_spaced(TotpService.generate(_cfg!)),
-            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500)),
+            style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.w500,
+                fontFeatures: [FontFeature.tabularFigures()])),
         const SizedBox(width: 8),
         Container(
           padding: const EdgeInsets.fromLTRB(6, 3, 8, 3),
@@ -915,7 +919,14 @@ class _PinnedCardState extends State<_PinnedCard> {
               ),
             ),
             const SizedBox(width: 4),
-            Text('$left', style: const TextStyle(fontSize: 12)),
+            SizedBox(
+              width: 16,
+              child: Text('$left',
+                  textAlign: TextAlign.end,
+                  style: const TextStyle(
+                      fontSize: 12,
+                      fontFeatures: [FontFeature.tabularFigures()])),
+            ),
           ]),
         ),
       ]);

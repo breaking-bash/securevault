@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 
@@ -91,6 +92,7 @@ class _TotpCodeTileState extends State<TotpCodeTile> {
                       fontSize: 22,
                       fontWeight: FontWeight.w500,
                       letterSpacing: 1.5,
+                      fontFeatures: [FontFeature.tabularFigures()],
                     ),
                   ),
                 ],
@@ -114,7 +116,14 @@ class _TotpCodeTileState extends State<TotpCodeTile> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                Text('$_remaining', style: const TextStyle(fontSize: 13)),
+                SizedBox(
+                  width: 18,
+                  child: Text('$_remaining',
+                      textAlign: TextAlign.end,
+                      style: const TextStyle(
+                          fontSize: 13,
+                          fontFeatures: [FontFeature.tabularFigures()])),
+                ),
               ]),
             ),
           ],
