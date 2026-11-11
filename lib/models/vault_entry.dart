@@ -19,6 +19,13 @@ enum EntryType {
   driver,
   passport,
   email,
+  password,
+  document,
+  crypto,
+  medical,
+  membership,
+  reward,
+  ssn,
 }
 
 /// Keys used in [VaultEntry.extra] for non-login item types.

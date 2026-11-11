@@ -319,6 +319,95 @@ class ItemTemplates {
         FieldSpec('smtpServer', 'Outgoing (SMTP) server', FieldKind.url),
       ],
     ),
+    EntryType.password: ItemTemplate(
+      type: EntryType.password,
+      label: 'Password',
+      icon: Icons.password,
+      color: Color(0xFF00897B),
+      subtitleKeys: ['pwUsername'],
+      fields: [
+        FieldSpec('pwUsername', 'Username', FieldKind.text),
+        FieldSpec('pwValue', 'Password', FieldKind.password),
+      ],
+    ),
+    EntryType.document: ItemTemplate(
+      type: EntryType.document,
+      label: 'Document',
+      icon: Icons.description,
+      color: Color(0xFF3949AB),
+      subtitleKeys: ['docType'],
+      fields: [
+        FieldSpec('docType', 'Document type', FieldKind.text),
+        FieldSpec('docDate', 'Date', FieldKind.date),
+      ],
+    ),
+    EntryType.crypto: ItemTemplate(
+      type: EntryType.crypto,
+      label: 'Crypto Wallet',
+      icon: Icons.currency_bitcoin,
+      color: Color(0xFFF57C00),
+      subtitleKeys: ['walletName'],
+      fields: [
+        FieldSpec('walletName', 'Wallet name', FieldKind.text),
+        FieldSpec('walletAddress', 'Wallet address', FieldKind.text,
+            mono: true),
+        FieldSpec('recoveryPhrase', 'Recovery phrase', FieldKind.password,
+            secret: true, maxLines: 3),
+        FieldSpec('walletPassword', 'Wallet password', FieldKind.password),
+      ],
+    ),
+    EntryType.medical: ItemTemplate(
+      type: EntryType.medical,
+      label: 'Medical Record',
+      icon: Icons.medical_services,
+      color: Color(0xFFE53935),
+      subtitleKeys: ['patient'],
+      fields: [
+        FieldSpec('patient', 'Patient', FieldKind.text),
+        FieldSpec('provider', 'Doctor / provider', FieldKind.text),
+        FieldSpec('insurer', 'Insurance company', FieldKind.text),
+        FieldSpec('policyNo', 'Policy number', FieldKind.text),
+        FieldSpec('bloodType', 'Blood type', FieldKind.text),
+        FieldSpec('providerPhone', 'Provider phone', FieldKind.phone),
+      ],
+    ),
+    EntryType.membership: ItemTemplate(
+      type: EntryType.membership,
+      label: 'Membership',
+      icon: Icons.card_membership,
+      color: Color(0xFF8E24AA),
+      subtitleKeys: ['memberName'],
+      fields: [
+        FieldSpec('org', 'Organization', FieldKind.text),
+        FieldSpec('memberName', 'Member name', FieldKind.text),
+        FieldSpec('memberId', 'Member ID', FieldKind.text),
+        FieldSpec('since', 'Member since', FieldKind.date),
+        FieldSpec('memberExpires', 'Expiry date', FieldKind.date),
+      ],
+    ),
+    EntryType.reward: ItemTemplate(
+      type: EntryType.reward,
+      label: 'Reward Program',
+      icon: Icons.redeem,
+      color: Color(0xFFC2185B),
+      subtitleKeys: ['rewardCompany'],
+      fields: [
+        FieldSpec('rewardCompany', 'Company', FieldKind.text),
+        FieldSpec('rewardNumber', 'Member number', FieldKind.text),
+        FieldSpec('rewardPin', 'PIN', FieldKind.number, secret: true),
+      ],
+    ),
+    EntryType.ssn: ItemTemplate(
+      type: EntryType.ssn,
+      label: 'Social Security Number',
+      icon: Icons.badge,
+      color: Color(0xFF546E7A),
+      subtitleKeys: ['ssnName'],
+      fields: [
+        FieldSpec('ssnName', 'Name', FieldKind.text),
+        FieldSpec('ssnNumber', 'Number', FieldKind.number, secret: true),
+      ],
+    ),
   };
 
   static ItemTemplate of(EntryType t) => _all[t]!;
@@ -339,6 +428,13 @@ class ItemTemplates {
     EntryType.driver,
     EntryType.passport,
     EntryType.email,
+    EntryType.password,
+    EntryType.document,
+    EntryType.crypto,
+    EntryType.medical,
+    EntryType.membership,
+    EntryType.reward,
+    EntryType.ssn,
   ];
 
   static const noteColor = Color(0xFFF9A825);

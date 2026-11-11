@@ -1,13 +1,14 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/biometric_service.dart';
 import '../../services/secret_key_service.dart';
 import '../../services/settings_service.dart';
 import '../../state/vault_state.dart';
+import '../widgets/emergency_kit.dart';
+import 'import_screen.dart';
 import 'link_send_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -158,10 +159,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ListTile(
             leading: const Icon(Icons.vpn_key_outlined),
             title: Text(state.sessionSecretKey != null
-                ? 'View Secret Key'
+                ? 'Secret Key enabled'
                 : 'Enable Secret Key'),
-            subtitle: const Text('Required with your password on new devices'),
-            onTap: () => _secretKey(context),
+            subtitle: Text(state.sessionSecretKey != null
+                ? 'Shown only once. Lost it? Link a new device with a QR code.'
+                : 'Required with your password on new devices'),
+            onTap: state.sessionSecretKey != null
+                ? () => _secretKeyInfo(context)
+                : () => _secretKey(context),
+          ),
+          ListTile(
+            leading: const Icon(Icons.file_download_outlined),
+            title: const Text('Import from another password manager'),
+            subtitle: const Text('1Password, Bitwarden, LastPass, Chrome, Dashlane, KeePass, CSV'),
+            onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ImportScreen())),
           ),
           if (Platform.isAndroid || Platform.isIOS)
             ListTile(
@@ -227,40 +239,34 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
+  Future<void> _secretKeyInfo(BuildContext context) => showDialog<void>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          title: const Text('Secret Key'),
+          content: const Text(
+              'Your Secret Key was shown once when it was created and is not '
+              'displayed again. If you lost your Emergency Kit PDF, sign in on '
+              'a new device by scanning a QR code from a device that is '
+              'already signed in (Link from another device).'),
+          actions: [
+            FilledButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('OK')),
+          ],
+        ),
+      );
+
   Future<void> _secretKey(BuildContext context) async {
     final state = context.read<VaultState>();
-    var key = state.sessionSecretKey;
-    if (key == null) {
-      final pw = state.sessionMasterPassword;
-      if (pw == null) return;
-      final fresh = SecretKeyService.instance.generate();
-      final ok = await state.changeMasterPassword(
-          currentPassword: pw, newPassword: pw, newSecretKey: fresh);
-      if (!ok || !context.mounted) return;
-      key = fresh;
-    }
-    final shown = key;
-    await showDialog<void>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Your Secret Key'),
-        content: SelectableText(shown,
-            style: const TextStyle(
-                fontFamily: 'monospace',
-                fontSize: 16,
-                fontWeight: FontWeight.bold)),
-        actions: [
-          TextButton(
-              onPressed: () => Clipboard.setData(ClipboardData(text: shown)),
-              child: const Text('Copy')),
-          FilledButton(
-              onPressed: () => Navigator.of(ctx).pop(),
-              child: const Text('Done')),
-        ],
-      ),
-    );
+    final pw = state.sessionMasterPassword;
+    if (pw == null) return;
+    final fresh = SecretKeyService.instance.generate();
+    final ok = await state.changeMasterPassword(
+        currentPassword: pw, newPassword: pw, newSecretKey: fresh);
+    if (!ok || !context.mounted) return;
+    await showEmergencyKitDialog(context,
+        accountName: state.account?.name ?? 'SecureVault', secretKey: fresh);
   }
-
   Future<void> _changeMasterPassword(BuildContext context) async {
     final current = TextEditingController();
     final next = TextEditingController();

@@ -7,9 +7,9 @@ import '../../models/vault_entry.dart';
 import '../../state/vault_state.dart';
 import '../widgets/generator_sheet.dart';
 import '../widgets/type_tile.dart';
-import 'entry_edit_screen.dart';
 import 'entry_detail_screen.dart';
 import 'group_list_screen.dart';
+import 'new_item_screen.dart';
 import 'note_edit_screen.dart';
 import 'settings_screen.dart';
 import 'watchtower_screen.dart';
@@ -104,77 +104,8 @@ class _VaultTabState extends State<_VaultTab> {
   }
 
   void _add(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (sheetCtx) {
-        final items = <(String, IconData, Color, VoidCallback)>[
-          for (final t in ItemTemplates.pickerOrder)
-            (
-              ItemTemplates.of(t).label,
-              ItemTemplates.of(t).icon,
-              ItemTemplates.of(t).color,
-              () => Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => EntryEditScreen(newType: t))),
-            ),
-          (
-            'Secure Note',
-            Icons.sticky_note_2_outlined,
-            ItemTemplates.noteColor,
-            () => Navigator.of(context)
-                .push(MaterialPageRoute(builder: (_) => const NoteEditScreen())),
-          ),
-        ];
-        return SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text('New Item',
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(fontWeight: FontWeight.w700)),
-                ),
-              ),
-              Flexible(
-                child: GridView.count(
-                  shrinkWrap: true,
-                  crossAxisCount: 3,
-                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-                  childAspectRatio: 1.05,
-                  children: [
-                    for (final it in items)
-                      InkWell(
-                        borderRadius: BorderRadius.circular(12),
-                        onTap: () {
-                          Navigator.pop(sheetCtx);
-                          it.$4();
-                        },
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            TypeTile(icon: it.$2, color: it.$3, size: 52),
-                            const SizedBox(height: 8),
-                            Text(it.$1,
-                                textAlign: TextAlign.center,
-                                maxLines: 2,
-                                style: const TextStyle(fontSize: 13)),
-                          ],
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
+    Navigator.of(context)
+        .push(MaterialPageRoute(builder: (_) => const NewItemScreen()));
   }
 
   @override

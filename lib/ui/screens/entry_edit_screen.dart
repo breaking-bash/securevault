@@ -59,6 +59,7 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
   String? _folderId;
   String? _signIn;
   bool _obscure = true;
+  bool _showTotp = false;
 
   bool get _isLogin => _entry.type == EntryType.login;
 
@@ -90,6 +91,7 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
     _tags = List.of(_entry.tags);
     _files = List.of(_entry.attachments);
     _folderId = _entry.folderId;
+    _showTotp = (_entry.totp ?? '').isNotEmpty;
     final s = _entry.extra[ItemTemplates.signInKey];
     _signIn = (s == null || s.isEmpty) ? null : s;
   }
@@ -206,6 +208,11 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
       ),
     );
     if (kind == null) return;
+    // A login's first one-time password is its main TOTP field.
+    if (kind == FieldKind.otp && _isLogin && !_showTotp) {
+      setState(() => _showTotp = true);
+      return;
+    }
     setState(() => _custom.add(_CustomRow(CustomField(
         label: kind == FieldKind.text ? 'text' : kind.label.toLowerCase(),
         kind: kind))));
@@ -353,16 +360,32 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
           reveal: !_obscure,
           onToggle: () => setState(() => _obscure = !_obscure),
         ),
-        _kindField(
-          controller: _totp,
-          label: 'One-time password (TOTP secret)',
-          kind: FieldKind.otp,
-          masked: true,
-          reveal: _revealed.contains('_totp'),
-          onToggle: () => setState(() => _revealed.contains('_totp')
-              ? _revealed.remove('_totp')
-              : _revealed.add('_totp')),
-        ),
+        if (_showTotp)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: _kindField(
+                  controller: _totp,
+                  label: 'One-time password (TOTP secret)',
+                  kind: FieldKind.otp,
+                  masked: true,
+                  reveal: _revealed.contains('_totp'),
+                  onToggle: () => setState(() => _revealed.contains('_totp')
+                      ? _revealed.remove('_totp')
+                      : _revealed.add('_totp')),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Remove',
+                icon: const Icon(Icons.remove_circle_outline),
+                onPressed: () => setState(() {
+                  _totp.clear();
+                  _showTotp = false;
+                }),
+              ),
+            ],
+          ),
         TextFormField(
           controller: _url,
           keyboardType: TextInputType.url,

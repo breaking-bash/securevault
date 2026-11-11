@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/account_service.dart';
 import '../../services/password_generator.dart';
 import '../../state/vault_state.dart';
+import '../widgets/emergency_kit.dart';
 
 /// Create a new local account + master password (zero-knowledge).
 class CreateAccountScreen extends StatefulWidget {
@@ -78,39 +78,8 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   Future<void> _showSecretKey() async {
     final key = context.read<VaultState>().sessionSecretKey;
     if (key == null) return;
-    await showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Save your Secret Key'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-                'You need this key plus your master password to sign in on a '
-                'new device. It cannot be recovered - store it somewhere safe.'),
-            const SizedBox(height: 16),
-            SelectableText(key,
-                style: const TextStyle(
-                    fontFamily: 'monospace',
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold)),
-          ],
-        ),
-        actions: [
-          TextButton.icon(
-            onPressed: () => Clipboard.setData(ClipboardData(text: key)),
-            icon: const Icon(Icons.copy),
-            label: const Text('Copy'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.of(ctx).pop(),
-            child: const Text('I saved it'),
-          ),
-        ],
-      ),
-    );
+    await showEmergencyKitDialog(context,
+        accountName: _name.text.trim(), secretKey: key);
   }
 
   @override

@@ -65,10 +65,11 @@ class _TotpScanScreenState extends State<TotpScanScreen> {
         ],
       ),
       body: Stack(
-        alignment: Alignment.center,
+        fit: StackFit.expand,
         children: [
           MobileScanner(
             controller: _controller,
+            fit: BoxFit.cover,
             onDetect: _onDetect,
             errorBuilder: (context, error, child) => Center(
               child: Padding(
@@ -90,12 +91,14 @@ class _TotpScanScreenState extends State<TotpScanScreen> {
           ),
           // Simple viewfinder overlay.
           IgnorePointer(
-            child: Container(
-              width: 240,
-              height: 240,
-              decoration: BoxDecoration(
-                border: Border.all(color: Colors.white, width: 3),
-                borderRadius: BorderRadius.circular(16),
+            child: Center(
+              child: Container(
+                width: 240,
+                height: 240,
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.white, width: 3),
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
           ),
