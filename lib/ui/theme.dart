@@ -87,3 +87,9 @@ InputDecorationTheme _inputTheme(ColorScheme scheme) => InputDecorationTheme(
         borderSide: BorderSide.none,
       ),
     );
+
+/// 1Password's violet field-label colour.
+Color fieldLabelColor(BuildContext c) =>
+    Theme.of(c).brightness == Brightness.dark
+        ? const Color(0xFFA99BFF)
+        : const Color(0xFF5B3FD6);

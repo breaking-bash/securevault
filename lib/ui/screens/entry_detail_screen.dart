@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../../models/item_templates.dart';
 import '../../models/vault_entry.dart';
 import '../../state/vault_state.dart';
+import '../../services/password_generator.dart';
+import '../theme.dart';
 import '../widgets/type_tile.dart';
 import '../widgets/totp_code_tile.dart';
 import 'entry_edit_screen.dart';
@@ -37,15 +39,19 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       );
     }
     return _FieldRow(
-      label: label,
+      label: label.toLowerCase(),
       value: hidden ? _dot * value.length.clamp(0, 24) : value,
       icon: kind.icon,
       monospace: mono && !hidden,
+      linkStyle: kind == FieldKind.url,
       trailing: masked
-          ? IconButton(
-              icon: Icon(hidden ? Icons.visibility : Icons.visibility_off),
-              onPressed: () => _toggle(id),
-            )
+          ? Row(mainAxisSize: MainAxisSize.min, children: [
+              if (id == '_pw') _StrengthBadge(value),
+              IconButton(
+                icon: Icon(hidden ? Icons.visibility : Icons.visibility_off),
+                onPressed: () => _toggle(id),
+              ),
+            ])
           : null,
       onCopy: () => _copy(context, value, label, sensitive: masked),
     );
@@ -80,17 +86,24 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       child: Card(
         margin: EdgeInsets.zero,
         clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (header != null)
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-                child: Text(header.toUpperCase(),
-                    style: Theme.of(context).textTheme.labelMedium),
+                child: Text(header.toLowerCase(),
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelLarge
+                        ?.copyWith(color: fieldLabelColor(context))),
               ),
             for (var i = 0; i < visible.length; i++) ...[
-              if (i > 0) const Divider(height: 0, indent: 54),
+              if (i > 0) const Divider(height: 0),
               visible[i],
             ],
           ],
@@ -226,8 +239,9 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                 children: [
                   for (final t in e.tags)
                     Chip(
-                      avatar: const Icon(Icons.sell_outlined, size: 16),
                       label: Text(t),
+                      side: BorderSide.none,
+                      backgroundColor: scheme.surfaceContainerHighest,
                     ),
                 ],
               ),
@@ -289,7 +303,8 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
 
-/// A single detail row: leading icon, label + value, optional actions.
+/// A single detail row in 1Password style: small violet lowercase label over
+/// the value; tapping the row copies it.
 class _FieldRow extends StatelessWidget {
   final String label;
   final String value;
@@ -297,6 +312,7 @@ class _FieldRow extends StatelessWidget {
   final VoidCallback? onCopy;
   final Widget? trailing;
   final bool monospace;
+  final bool linkStyle;
 
   const _FieldRow({
     required this.label,
@@ -305,43 +321,79 @@ class _FieldRow extends StatelessWidget {
     this.onCopy,
     this.trailing,
     this.monospace = false,
+    this.linkStyle = false,
   });
 
   @override
   Widget build(BuildContext context) {
     if (value.isEmpty) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
-      child: Row(
-        children: [
-          Icon(icon, size: 22, color: scheme.onSurfaceVariant),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(label,
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelMedium
-                        ?.copyWith(color: scheme.onSurfaceVariant)),
-                const SizedBox(height: 2),
-                SelectableText(
-                  value,
-                  style: TextStyle(
-                    fontFamily: monospace ? 'monospace' : null,
-                    fontSize: 15,
+    return InkWell(
+      onTap: onCopy,
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelLarge
+                          ?.copyWith(color: fieldLabelColor(context))),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: TextStyle(
+                      fontFamily: monospace ? 'monospace' : null,
+                      fontSize: 16,
+                      color: linkStyle ? scheme.primary : null,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          if (trailing != null) trailing!,
-          if (onCopy != null)
-            IconButton(icon: const Icon(Icons.copy), onPressed: onCopy),
-        ],
+            if (trailing != null) trailing!,
+          ],
+        ),
       ),
     );
+  }
+}
+
+/// "Fantastic ○" style password strength indicator.
+class _StrengthBadge extends StatelessWidget {
+  final String password;
+  const _StrengthBadge(this.password);
+
+  @override
+  Widget build(BuildContext context) {
+    final s = PasswordGenerator.instance.strength(password);
+    const labels = ['Terrible', 'Weak', 'Fair', 'Good', 'Fantastic'];
+    const colors = [
+      Color(0xFFD93025),
+      Color(0xFFF4511E),
+      Color(0xFFF9AB00),
+      Color(0xFF34A853),
+      Color(0xFF1E8E3E),
+    ];
+    final i = s.clamp(0, 4);
+    return Row(mainAxisSize: MainAxisSize.min, children: [
+      Text(labels[i],
+          style: TextStyle(
+              fontSize: 13,
+              color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      const SizedBox(width: 6),
+      Container(
+        width: 14,
+        height: 14,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: colors[i], width: 3),
+        ),
+      ),
+    ]);
   }
 }

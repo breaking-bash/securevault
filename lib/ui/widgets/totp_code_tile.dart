@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../../services/totp_service.dart';
+import '../theme.dart';
 
 /// Shows a live RFC 6238 TOTP code with a countdown ring that refreshes each
 /// period. [stored] is the saved TOTP value (a bare base32 secret or a full
@@ -50,8 +51,8 @@ class _TotpCodeTileState extends State<TotpCodeTile> {
   }
 
   String _spaced(String code) {
-    if (code.length == 6) return '${code.substring(0, 3)} ${code.substring(3)}';
-    if (code.length == 8) return '${code.substring(0, 4)} ${code.substring(4)}';
+    if (code.length == 6) return '${code.substring(0, 3)} \u2022 ${code.substring(3)}';
+    if (code.length == 8) return '${code.substring(0, 4)} \u2022 ${code.substring(4)}';
     return code;
   }
 
@@ -67,42 +68,57 @@ class _TotpCodeTileState extends State<TotpCodeTile> {
       );
     }
     final period = _config!.period;
-    return ListTile(
-      leading: Icon(Icons.timer_outlined, color: scheme.primary),
-      title: Text(
-        _spaced(_code),
-        style: const TextStyle(
-          fontFamily: 'monospace',
-          fontSize: 22,
-          fontWeight: FontWeight.w600,
-          letterSpacing: 2,
-        ),
-      ),
-      subtitle: const Text('Verification code (TOTP)'),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            width: 28,
-            height: 28,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                CircularProgressIndicator(
-                  value: _remaining / period,
-                  strokeWidth: 3,
-                  backgroundColor: scheme.surfaceContainerHighest,
-                ),
-                Text('$_remaining', style: const TextStyle(fontSize: 11)),
-              ],
+    final urgent = _remaining <= 5;
+    return InkWell(
+      onTap: () => widget.onCopy(_code),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 10, 16, 10),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('one-time password',
+                      style: Theme.of(context)
+                          .textTheme
+                          .labelLarge
+                          ?.copyWith(color: fieldLabelColor(context))),
+                  const SizedBox(height: 2),
+                  Text(
+                    _spaced(_code),
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 1.5,
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          IconButton(
-            tooltip: 'Copy code',
-            icon: const Icon(Icons.copy),
-            onPressed: () => widget.onCopy(_code),
-          ),
-        ],
+            Container(
+              padding: const EdgeInsets.fromLTRB(6, 4, 10, 4),
+              decoration: BoxDecoration(
+                color: scheme.surface,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(mainAxisSize: MainAxisSize.min, children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    value: _remaining / period,
+                    strokeWidth: 3,
+                    color: urgent ? Colors.red : const Color(0xFF1E8E3E),
+                    backgroundColor: scheme.outlineVariant,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text('$_remaining', style: const TextStyle(fontSize: 13)),
+              ]),
+            ),
+          ],
+        ),
       ),
     );
   }
