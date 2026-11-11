@@ -1,8 +1,7 @@
 # ADR-0001: Cryptographic algorithm selection (PROPOSED)
 
-> **Status: proposed, awaiting human and independent cryptographic review.**
-> Nothing here is implemented. Per the master spec, no cryptography code is
-> written until this is approved. Do not claim production readiness.
+> **Status: approved by the project owner (2026-11-11). Independent cryptographic review is still pending.**
+> Implementation starts with `crypto-engine`. Do not claim production readiness.
 
 ## Decisions requested
 

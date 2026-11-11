@@ -1,6 +1,6 @@
 [package]
 name = "crypto-engine"
-description = "Crypto engine INTERFACE ONLY. No cryptographic implementation exists yet."
+description = "SecureVault crypto engine (ADR-0001). Pending independent cryptographic review."
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,6 +9,12 @@ publish.workspace = true
 [dependencies]
 shared-types.workspace = true
 thiserror.workspace = true
+argon2 = "0.5"
+chacha20poly1305 = "0.10"
+hkdf = "0.12"
+sha2 = "0.10"
+zeroize = "1"
+getrandom = "0.3"
 
 [lints]
 workspace = true
