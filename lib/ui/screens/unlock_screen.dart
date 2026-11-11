@@ -41,6 +41,11 @@ class _UnlockScreenState extends State<UnlockScreen>
       vsync: this, duration: const Duration(milliseconds: 650));
   late final AnimationController _shake = AnimationController(
       vsync: this, duration: const Duration(milliseconds: 450));
+  late final AnimationController _enter = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 900))
+    ..forward();
+  late final AnimationController _ripple = AnimationController(
+      vsync: this, duration: const Duration(milliseconds: 800));
 
   @override
   void initState() {
@@ -59,6 +64,8 @@ class _UnlockScreenState extends State<UnlockScreen>
     _sk.dispose();
     _open.dispose();
     _shake.dispose();
+    _enter.dispose();
+    _ripple.dispose();
     super.dispose();
   }
 
@@ -71,8 +78,9 @@ class _UnlockScreenState extends State<UnlockScreen>
 
   Future<void> _refreshBioForSelected({bool autoPrompt = false}) async {
     final account = _selected ?? context.read<VaultState>().accountsList.first;
-    final enabled = await BiometricService.instance.hasStoredSecret(account.id);
+    final stored = await BiometricService.instance.hasStoredSecret(account.id);
     if (!mounted) return;
+    final enabled = stored && context.read<VaultState>().biometricAllowed(account);
     setState(() => _bioEnabledForSelected = enabled);
     // Offer the biometric prompt automatically the first time, if enabled.
     if (enabled && autoPrompt && !_bioAutoPrompted) {
@@ -93,6 +101,7 @@ class _UnlockScreenState extends State<UnlockScreen>
   /// Plays the "unlock" animation, then lets the gate reveal the vault.
   Future<void> _succeed(VaultState state) async {
     HapticFeedback.mediumImpact();
+    _ripple.forward(from: 0);
     if (mounted) {
       setState(() {
         _busy = false;
@@ -157,7 +166,9 @@ class _UnlockScreenState extends State<UnlockScreen>
     final state = context.watch<VaultState>();
     final scheme = Theme.of(context).colorScheme;
     _selected ??= state.accountsList.first;
-    final lockColor = _succeeded ? _successGreen : scheme.primary;
+    final lockColor = _succeeded
+        ? _successGreen
+        : (_error != null ? scheme.error : scheme.primary);
     final bioReady = _bioAvailable && _bioEnabledForSelected;
 
     return Scaffold(
@@ -177,13 +188,21 @@ class _UnlockScreenState extends State<UnlockScreen>
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.all(24),
-              child: ConstrainedBox(
+              child: FadeTransition(
+                opacity: CurvedAnimation(
+                    parent: _enter,
+                    curve: const Interval(0.15, 0.7, curve: Curves.easeOut)),
+                child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 440),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Center(
-                      child: AnimatedBuilder(
+                      child: _LockStage(
+                        ripple: _ripple,
+                        enter: _enter,
+                        color: lockColor,
+                        child: AnimatedBuilder(
                         animation: _shake,
                         builder: (_, child) => Transform.translate(
                           offset: Offset(
@@ -206,6 +225,7 @@ class _UnlockScreenState extends State<UnlockScreen>
                             bodyColor: lockColor,
                           ),
                         ),
+                      ),
                       ),
                     ),
                     const SizedBox(height: 16),
@@ -342,10 +362,90 @@ class _UnlockScreenState extends State<UnlockScreen>
                   ],
                 ),
               ),
+              ),
             ),
           ),
         ),
       ),
     );
   }
+}
+
+/// Lock stage: soft glow halo, a success ripple, and a bounce-in on entry.
+class _LockStage extends StatelessWidget {
+  final Animation<double> ripple;
+  final Animation<double> enter;
+  final Color color;
+  final Widget child;
+  const _LockStage({
+    required this.ripple,
+    required this.enter,
+    required this.color,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: 220,
+      height: 180,
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          AnimatedBuilder(
+            animation: ripple,
+            builder: (_, __) => CustomPaint(
+              size: const Size(220, 180),
+              painter: _RipplePainter(ripple.value, color),
+            ),
+          ),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 400),
+            width: 150,
+            height: 150,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: RadialGradient(colors: [
+                color.withValues(alpha: 0.22),
+                color.withValues(alpha: 0),
+              ]),
+            ),
+          ),
+          ScaleTransition(
+            scale: CurvedAnimation(
+                parent: enter,
+                curve: const Interval(0, 0.6, curve: Curves.easeOutBack)),
+            child: child,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _RipplePainter extends CustomPainter {
+  final double t;
+  final Color color;
+  _RipplePainter(this.t, this.color);
+
+  @override
+  void paint(Canvas canvas, Size s) {
+    if (t <= 0 || t >= 1) return;
+    final c = s.center(Offset.zero);
+    for (var i = 0; i < 2; i++) {
+      final p = (t - i * 0.18).clamp(0.0, 1.0);
+      if (p == 0) continue;
+      canvas.drawCircle(
+        c,
+        40 + p * 90,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3 * (1 - p) + 0.5
+          ..color = color.withValues(alpha: (1 - p) * 0.55),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_RipplePainter o) => o.t != t || o.color != color;
 }

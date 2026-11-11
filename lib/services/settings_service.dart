@@ -22,6 +22,11 @@ class AppSettings {
   bool blockScreenshots;
   // When false, password fields stay masked until revealed.
   bool alwaysShowPasswords;
+  // Biometric unlock is refused once this many days pass since the last
+  // master-password unlock (0 = never require).
+  int requirePasswordDays;
+  // accountId -> epoch ms of the last master-password unlock.
+  Map<String, int> lastPasswordUnlock;
   // Most recently opened entry ids, newest first.
   List<String> recentIds;
 
@@ -32,13 +37,16 @@ class AppSettings {
     this.fetchIcons = true,
     this.blockScreenshots = true,
     this.alwaysShowPasswords = false,
+    this.requirePasswordDays = 7,
+    Map<String, int>? lastPasswordUnlock,
     this.themeMode = ThemeMode.system,
     this.autoLockMinutes = 3,
     this.autoLockImmediate = false,
     this.clipboardClearSeconds = 30,
   })  : hiddenHomeSections = hiddenHomeSections ?? {},
         ignoredAlerts = ignoredAlerts ?? {},
-        recentIds = recentIds ?? [];
+        recentIds = recentIds ?? [],
+        lastPasswordUnlock = lastPasswordUnlock ?? {};
 
   AppSettings copyWith({
     ThemeMode? themeMode,
@@ -48,6 +56,7 @@ class AppSettings {
     bool? fetchIcons,
     bool? blockScreenshots,
     bool? alwaysShowPasswords,
+    int? requirePasswordDays,
   }) =>
       AppSettings(
         themeMode: themeMode ?? this.themeMode,
@@ -57,6 +66,8 @@ class AppSettings {
         fetchIcons: fetchIcons ?? this.fetchIcons,
         blockScreenshots: blockScreenshots ?? this.blockScreenshots,
         alwaysShowPasswords: alwaysShowPasswords ?? this.alwaysShowPasswords,
+        requirePasswordDays: requirePasswordDays ?? this.requirePasswordDays,
+        lastPasswordUnlock: {...lastPasswordUnlock},
         hiddenHomeSections: {...hiddenHomeSections},
         ignoredAlerts: {...ignoredAlerts},
         recentIds: [...recentIds],
@@ -72,6 +83,8 @@ class AppSettings {
         'fetchIcons': fetchIcons,
         'blockScreenshots': blockScreenshots,
         'alwaysShowPasswords': alwaysShowPasswords,
+        'requirePasswordDays': requirePasswordDays,
+        'lastPasswordUnlock': lastPasswordUnlock,
         'recentIds': recentIds,
       };
 
@@ -88,6 +101,9 @@ class AppSettings {
         fetchIcons: (j['fetchIcons'] ?? true) as bool,
         blockScreenshots: (j['blockScreenshots'] ?? true) as bool,
         alwaysShowPasswords: (j['alwaysShowPasswords'] ?? false) as bool,
+        requirePasswordDays: (j['requirePasswordDays'] ?? 7) as int,
+        lastPasswordUnlock: ((j['lastPasswordUnlock'] ?? const {}) as Map)
+            .map((k, v) => MapEntry(k as String, (v as num).toInt())),
         recentIds: ((j['recentIds'] ?? const []) as List).cast<String>().toList(),
         ignoredAlerts:
             ((j['ignoredAlerts'] ?? const []) as List).cast<String>().toSet(),

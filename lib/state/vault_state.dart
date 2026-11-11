@@ -127,6 +127,7 @@ class VaultState extends ChangeNotifier {
     required String masterPassword,
     String? secretKey,
     bool animate = false,
+    bool viaBiometric = false,
   }) async {
     final sk = SecretKeyService.instance;
     String? secretText;
@@ -158,9 +159,23 @@ class VaultState extends ChangeNotifier {
 
     await _db.open(await _accounts.vaultPathFor(account.id));
     await _loadAll();
+    if (!viaBiometric) {
+      settings.lastPasswordUnlock[account.id] =
+          DateTime.now().millisecondsSinceEpoch;
+      await SettingsService.instance.save(settings);
+    }
     _restartLockTimer();
     notifyListeners();
     return true;
+  }
+
+  /// False once the user's "require master password" window has elapsed.
+  bool biometricAllowed(LocalAccount account) {
+    final days = settings.requirePasswordDays;
+    final last = settings.lastPasswordUnlock[account.id];
+    if (days <= 0 || last == null) return true;
+    return DateTime.now().millisecondsSinceEpoch - last <
+        Duration(days: days).inMilliseconds;
   }
 
   Future<void> lock() async {
@@ -538,7 +553,11 @@ class VaultState extends ChangeNotifier {
       reason: 'Unlock ${account.name}',
     );
     if (pw == null) return false;
-    return unlock(account: account, masterPassword: pw, animate: animate);
+    return unlock(
+        account: account,
+        masterPassword: pw,
+        animate: animate,
+        viaBiometric: true);
   }
 
   // ---------------------------------------------------------------- settings

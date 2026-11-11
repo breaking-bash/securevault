@@ -50,13 +50,13 @@ class _HomeScreenState extends State<HomeScreen> {
         onDestinationSelected: (i) => setState(() => _tab = i),
         destinations: const [
           NavigationDestination(
-              icon: Icon(Icons.home_outlined),
+              icon: Icon(Icons.home_rounded),
               selectedIcon: Icon(Icons.home_rounded),
               tooltip: 'Home',
               label: 'Home'),
           NavigationDestination(
-              icon: Icon(Icons.description_outlined),
-              selectedIcon: Icon(Icons.description),
+              icon: Icon(Icons.description_rounded),
+              selectedIcon: Icon(Icons.description_rounded),
               tooltip: 'Vault',
               label: 'Vault'),
           NavigationDestination(
@@ -65,8 +65,8 @@ class _HomeScreenState extends State<HomeScreen> {
               tooltip: 'Search',
               label: 'Search'),
           NavigationDestination(
-              icon: Icon(Icons.shield_outlined),
-              selectedIcon: Icon(Icons.shield),
+              icon: Icon(Icons.shield_rounded),
+              selectedIcon: Icon(Icons.shield_rounded),
               tooltip: 'Watchtower',
               label: 'Watchtower'),
         ],
@@ -227,7 +227,7 @@ class _VaultTabState extends State<_VaultTab> {
               children: [
                 for (final t in state.allTags)
                   ActionChip(
-                    avatar: const Icon(Icons.sell_outlined, size: 16),
+                    avatar: const Icon(Icons.sell_rounded, size: 16),
                     label: Text(t),
                     onPressed: () => Navigator.of(context).push(
                         MaterialPageRoute(
@@ -260,7 +260,7 @@ class _VaultTabState extends State<_VaultTab> {
             ),
       if (state.notes.isNotEmpty)
           _VaultRow(
-            icon: Icons.sticky_note_2_outlined,
+            icon: Icons.sticky_note_2_rounded,
             color: ItemTemplates.noteColor,
             label: 'Secure Note',
             count: state.notes.length,
@@ -270,13 +270,17 @@ class _VaultTabState extends State<_VaultTab> {
             )),
           ),
       ])),
+      if (show('library'))
+        const SliverToBoxAdapter(
+            child: Padding(
+                padding: EdgeInsets.only(top: 16), child: _LibraryGroup())),
       if (show('folders')) _SectionHeader('FOLDERS', state.folders.length),
       if (show('folders') && state.folders.isNotEmpty)
       SliverToBoxAdapter(child: _Group(children: state.folders.map((f) {
         final count = state.activeEntries.where((e) => e.folderId == f.id).length +
             state.notes.where((n) => n.folderId == f.id).length;
         return _VaultRow(
-            icon: Icons.folder_outlined,
+            icon: Icons.folder_rounded,
             color: const Color(0xFF6B7A90),
             label: f.name,
             count: count,
@@ -474,7 +478,7 @@ class _NoteRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
           leading: const TypeTile(
-              icon: Icons.sticky_note_2_outlined,
+              icon: Icons.sticky_note_2_rounded,
               color: ItemTemplates.noteColor),
           title: Text(note.title.isEmpty ? '(untitled)' : note.title),
           subtitle: note.body.isEmpty
@@ -548,13 +552,13 @@ class _FolderManagerState extends State<FolderManager> {
               child: Text('No folders yet.'),
             ),
           ...state.folders.map((f) => ListTile(
-                leading: const Icon(Icons.folder_outlined),
+                leading: const Icon(Icons.folder_rounded),
                 title: Text(f.name),
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      icon: const Icon(Icons.edit_outlined),
+                      icon: const Icon(Icons.edit_rounded),
                       onPressed: () async {
                         final name = await _promptRename(context, f.name);
                         if (name != null && name.trim().isNotEmpty) {
@@ -563,7 +567,7 @@ class _FolderManagerState extends State<FolderManager> {
                       },
                     ),
                     IconButton(
-                      icon: const Icon(Icons.delete_outline),
+                      icon: const Icon(Icons.delete_outline_rounded),
                       onPressed: () => state.deleteFolder(f),
                     ),
                   ],
@@ -604,6 +608,7 @@ class _CustomizeHome extends StatelessWidget {
     'tags': 'Tags',
     'categories': 'Categories',
     'folders': 'Folders',
+    'library': 'Archive & Recently Deleted',
     'noFolder': 'Items without a folder',
   };
 
@@ -680,7 +685,7 @@ Widget _profileMenu(BuildContext context, VaultState state) {
       PopupMenuItem(
           value: 'settings',
           child: ListTile(
-              leading: Icon(Icons.settings_outlined),
+              leading: Icon(Icons.settings_rounded),
               title: Text('Settings'))),
       PopupMenuItem(
           value: 'customize',
@@ -689,27 +694,27 @@ Widget _profileMenu(BuildContext context, VaultState state) {
       PopupMenuItem(
           value: 'archive',
           child: ListTile(
-              leading: Icon(Icons.archive_outlined), title: Text('Archive'))),
+              leading: Icon(Icons.archive_rounded), title: Text('Archive'))),
       PopupMenuItem(
           value: 'trash',
           child: ListTile(
-              leading: Icon(Icons.delete_outline),
+              leading: Icon(Icons.delete_outline_rounded),
               title: Text('Recently Deleted'))),
       PopupMenuItem(
           value: 'folders',
           child: ListTile(
-              leading: Icon(Icons.create_new_folder_outlined),
+              leading: Icon(Icons.create_new_folder_rounded),
               title: Text('Manage folders'))),
       PopupMenuDivider(),
       PopupMenuItem(
           value: 'switch',
           child: ListTile(
-              leading: Icon(Icons.switch_account_outlined),
+              leading: Icon(Icons.switch_account_rounded),
               title: Text('Switch account'))),
       PopupMenuItem(
           value: 'lock',
           child: ListTile(
-              leading: Icon(Icons.lock_outline),
+              leading: Icon(Icons.lock_outline_rounded),
               title: Text('Lock vault now'))),
     ],
   );
@@ -746,8 +751,29 @@ class _Avatar extends StatelessWidget {
 }
 
 // ---------------------------------------------------------------- Home tab
-class _HomeTab extends StatelessWidget {
+class _HomeTab extends StatefulWidget {
   const _HomeTab();
+
+  @override
+  State<_HomeTab> createState() => _HomeTabState();
+}
+
+class _HomeTabState extends State<_HomeTab> {
+  final _extended = ValueNotifier<bool>(true);
+  final _scroll = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(() => _extended.value = _scroll.offset < 24);
+  }
+
+  @override
+  void dispose() {
+    _scroll.dispose();
+    _extended.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -772,10 +798,13 @@ class _HomeTab extends StatelessWidget {
     ].take(6).toList();
 
     return Scaffold(
-      floatingActionButton: const _NewItemFab(extended: true),
+      floatingActionButton: ValueListenableBuilder<bool>(
+          valueListenable: _extended,
+          builder: (_, v, __) => _NewItemFab(extended: v)),
       body: SafeArea(
         bottom: false,
         child: ListView(
+          controller: _scroll,
           padding: const EdgeInsets.only(bottom: 110),
           children: [
             Padding(
@@ -829,6 +858,11 @@ class _HomeTab extends StatelessWidget {
                 tint: const Color(0xFFD9A8F0),
                 entries: modified,
               ),
+            if (show('library'))
+              const Padding(
+                padding: EdgeInsets.only(top: 12),
+                child: _LibraryGroup(),
+              ),
           ],
         ),
       ),
@@ -838,51 +872,93 @@ class _HomeTab extends StatelessWidget {
 
 /// Blue rounded-square "+ New Item" button shared by Home and Vault. Built
 /// from plain Material pieces (not FloatingActionButton) so it looks the same
-/// on every device and Android version; collapses to a square "+" on scroll.
+/// on every device; its width animates smoothly between the labelled pill-less
+/// rectangle and a square "+" while the list scrolls.
 class _NewItemFab extends StatelessWidget {
   final bool extended;
   const _NewItemFab({required this.extended});
 
   static const _blue = Color(0xFF0A72FF);
+  static const _fullWidth = 164.0;
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: _blue,
-      elevation: 4,
-      shadowColor: Colors.black54,
-      borderRadius: BorderRadius.circular(16),
-      child: InkWell(
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 280),
+      curve: Curves.easeInOutCubic,
+      width: extended ? _fullWidth : 56,
+      height: 56,
+      decoration: BoxDecoration(
+        color: _blue,
         borderRadius: BorderRadius.circular(16),
-        onTap: () => Navigator.of(context)
-            .push(MaterialPageRoute(builder: (_) => const NewItemScreen())),
-        child: AnimatedSize(
-          duration: const Duration(milliseconds: 200),
-          curve: Curves.easeOut,
-          alignment: Alignment.centerLeft,
-          child: SizedBox(
-            height: 56,
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: extended ? 20 : 16),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.add, color: Colors.white, size: 24),
-                  if (extended) ...[
+        boxShadow: const [
+          BoxShadow(color: Color(0x59000000), blurRadius: 12, offset: Offset(0, 4)),
+        ],
+      ),
+      child: Material(
+        type: MaterialType.transparency,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => Navigator.of(context)
+              .push(MaterialPageRoute(builder: (_) => const NewItemScreen())),
+          child: ClipRect(
+            child: OverflowBox(
+              alignment: Alignment.centerLeft,
+              minWidth: 0,
+              maxWidth: _fullWidth,
+              child: Padding(
+                padding: const EdgeInsets.only(left: 16),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.add_rounded, color: Colors.white, size: 24),
                     const SizedBox(width: 12),
-                    const Text('New Item',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500)),
+                    AnimatedOpacity(
+                      duration: const Duration(milliseconds: 180),
+                      opacity: extended ? 1 : 0,
+                      child: const Text('New Item',
+                          softWrap: false,
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w500)),
+                    ),
                   ],
-                ],
+                ),
               ),
             ),
           ),
         ),
       ),
     );
+  }
+}
+
+/// Archive and Recently Deleted shortcuts shown on Home and in the Vault.
+class _LibraryGroup extends StatelessWidget {
+  const _LibraryGroup();
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<VaultState>();
+    return _Group(children: [
+      _VaultRow(
+        icon: Icons.archive_rounded,
+        color: const Color(0xFF6B7A90),
+        label: 'Archive',
+        count: state.archivedEntries.length,
+        onTap: () => Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const ArchiveScreen())),
+      ),
+      _VaultRow(
+        icon: Icons.delete_rounded,
+        color: const Color(0xFFD9534F),
+        label: 'Recently Deleted',
+        count: state.trashedEntries.length,
+        onTap: () => Navigator.of(context).push(MaterialPageRoute(
+            builder: (_) => const ArchiveScreen(trash: true))),
+      ),
+    ]);
   }
 }
 class _PinnedCard extends StatefulWidget {

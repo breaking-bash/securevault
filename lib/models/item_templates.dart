@@ -29,15 +29,15 @@ extension FieldKindInfo on FieldKind {
       };
 
   IconData get icon => switch (this) {
-        FieldKind.text => Icons.text_fields,
-        FieldKind.url => Icons.link,
-        FieldKind.email => Icons.alternate_email,
-        FieldKind.date => Icons.event_outlined,
-        FieldKind.otp => Icons.timer_outlined,
-        FieldKind.password => Icons.lock_outline,
-        FieldKind.phone => Icons.phone_outlined,
-        FieldKind.multiline => Icons.notes,
-        FieldKind.number => Icons.pin_outlined,
+        FieldKind.text => Icons.text_fields_rounded,
+        FieldKind.url => Icons.link_rounded,
+        FieldKind.email => Icons.alternate_email_rounded,
+        FieldKind.date => Icons.event_rounded,
+        FieldKind.otp => Icons.timer_rounded,
+        FieldKind.password => Icons.lock_rounded,
+        FieldKind.phone => Icons.phone_rounded,
+        FieldKind.multiline => Icons.notes_rounded,
+        FieldKind.number => Icons.pin_rounded,
       };
 
   TextInputType get keyboard => switch (this) {
@@ -120,13 +120,13 @@ class ItemTemplates {
     EntryType.login: ItemTemplate(
       type: EntryType.login,
       label: 'Login',
-      icon: Icons.language,
+      icon: Icons.language_rounded,
       color: Color(0xFF0572EC),
     ),
     EntryType.card: ItemTemplate(
       type: EntryType.card,
       label: 'Credit Card',
-      icon: Icons.credit_card,
+      icon: Icons.credit_card_rounded,
       color: Color(0xFFE8710A),
       subtitleKeys: [EntryFields.cardNumber],
       fields: [
@@ -142,7 +142,7 @@ class ItemTemplates {
     EntryType.ssh: ItemTemplate(
       type: EntryType.ssh,
       label: 'SSH Key',
-      icon: Icons.terminal,
+      icon: Icons.terminal_rounded,
       color: Color(0xFF455A64),
       subtitleKeys: [EntryFields.fingerprint],
       fields: [
@@ -159,7 +159,7 @@ class ItemTemplates {
     EntryType.passkey: ItemTemplate(
       type: EntryType.passkey,
       label: 'Passkey',
-      icon: Icons.key,
+      icon: Icons.key_rounded,
       color: Color(0xFF7B1FA2),
       subtitleKeys: [EntryFields.passkeyUser, EntryFields.rpId],
       fields: [
@@ -174,7 +174,7 @@ class ItemTemplates {
     EntryType.identity: ItemTemplate(
       type: EntryType.identity,
       label: 'Identity',
-      icon: Icons.badge,
+      icon: Icons.person_rounded,
       color: Color(0xFF00897B),
       subtitleKeys: ['email', 'phone'],
       fields: [
@@ -191,7 +191,7 @@ class ItemTemplates {
     EntryType.bank: ItemTemplate(
       type: EntryType.bank,
       label: 'Bank Account',
-      icon: Icons.account_balance,
+      icon: Icons.account_balance_rounded,
       color: Color(0xFF2E7D32),
       subtitleKeys: ['bankName'],
       fields: [
@@ -209,7 +209,7 @@ class ItemTemplates {
     EntryType.wifi: ItemTemplate(
       type: EntryType.wifi,
       label: 'Wi-Fi Network',
-      icon: Icons.wifi,
+      icon: Icons.wifi_rounded,
       color: Color(0xFF0097A7),
       subtitleKeys: ['ssid'],
       fields: [
@@ -221,7 +221,7 @@ class ItemTemplates {
     EntryType.server: ItemTemplate(
       type: EntryType.server,
       label: 'Server',
-      icon: Icons.dns,
+      icon: Icons.dns_rounded,
       color: Color(0xFF5D4037),
       subtitleKeys: ['host'],
       fields: [
@@ -234,7 +234,7 @@ class ItemTemplates {
     EntryType.database: ItemTemplate(
       type: EntryType.database,
       label: 'Database',
-      icon: Icons.storage,
+      icon: Icons.storage_rounded,
       color: Color(0xFF3949AB),
       subtitleKeys: ['dbHost'],
       fields: [
@@ -249,7 +249,7 @@ class ItemTemplates {
     EntryType.api: ItemTemplate(
       type: EntryType.api,
       label: 'API Credential',
-      icon: Icons.vpn_key,
+      icon: Icons.vpn_key_rounded,
       color: Color(0xFFC62828),
       subtitleKeys: ['apiEndpoint'],
       fields: [
@@ -262,7 +262,7 @@ class ItemTemplates {
     EntryType.license: ItemTemplate(
       type: EntryType.license,
       label: 'Software License',
-      icon: Icons.verified,
+      icon: Icons.verified_rounded,
       color: Color(0xFF6A1B9A),
       subtitleKeys: ['vendor'],
       fields: [
@@ -277,7 +277,7 @@ class ItemTemplates {
     EntryType.driver: ItemTemplate(
       type: EntryType.driver,
       label: "Driver's License",
-      icon: Icons.directions_car,
+      icon: Icons.directions_car_rounded,
       color: Color(0xFFEF6C00),
       subtitleKeys: ['licenseNumber'],
       fields: [
@@ -293,7 +293,7 @@ class ItemTemplates {
     EntryType.passport: ItemTemplate(
       type: EntryType.passport,
       label: 'Passport',
-      icon: Icons.menu_book,
+      icon: Icons.menu_book_rounded,
       color: Color(0xFF1565C0),
       subtitleKeys: ['country'],
       fields: [
@@ -309,7 +309,7 @@ class ItemTemplates {
     EntryType.email: ItemTemplate(
       type: EntryType.email,
       label: 'Email Account',
-      icon: Icons.email,
+      icon: Icons.email_rounded,
       color: Color(0xFFD81B60),
       subtitleKeys: ['emailAddress'],
       fields: [
@@ -322,7 +322,7 @@ class ItemTemplates {
     EntryType.password: ItemTemplate(
       type: EntryType.password,
       label: 'Password',
-      icon: Icons.password,
+      icon: Icons.password_rounded,
       color: Color(0xFF00897B),
       subtitleKeys: ['pwUsername'],
       fields: [
@@ -333,7 +333,7 @@ class ItemTemplates {
     EntryType.document: ItemTemplate(
       type: EntryType.document,
       label: 'Document',
-      icon: Icons.description,
+      icon: Icons.description_rounded,
       color: Color(0xFF3949AB),
       subtitleKeys: ['docType'],
       fields: [
@@ -344,7 +344,7 @@ class ItemTemplates {
     EntryType.crypto: ItemTemplate(
       type: EntryType.crypto,
       label: 'Crypto Wallet',
-      icon: Icons.currency_bitcoin,
+      icon: Icons.currency_bitcoin_rounded,
       color: Color(0xFFF57C00),
       subtitleKeys: ['walletName'],
       fields: [
@@ -359,7 +359,7 @@ class ItemTemplates {
     EntryType.medical: ItemTemplate(
       type: EntryType.medical,
       label: 'Medical Record',
-      icon: Icons.medical_services,
+      icon: Icons.medical_services_rounded,
       color: Color(0xFFE53935),
       subtitleKeys: ['patient'],
       fields: [
@@ -374,7 +374,7 @@ class ItemTemplates {
     EntryType.membership: ItemTemplate(
       type: EntryType.membership,
       label: 'Membership',
-      icon: Icons.card_membership,
+      icon: Icons.card_membership_rounded,
       color: Color(0xFF8E24AA),
       subtitleKeys: ['memberName'],
       fields: [
@@ -388,7 +388,7 @@ class ItemTemplates {
     EntryType.reward: ItemTemplate(
       type: EntryType.reward,
       label: 'Reward Program',
-      icon: Icons.redeem,
+      icon: Icons.redeem_rounded,
       color: Color(0xFFC2185B),
       subtitleKeys: ['rewardCompany'],
       fields: [
@@ -400,7 +400,7 @@ class ItemTemplates {
     EntryType.ssn: ItemTemplate(
       type: EntryType.ssn,
       label: 'Social Security Number',
-      icon: Icons.badge,
+      icon: Icons.badge_rounded,
       color: Color(0xFF546E7A),
       subtitleKeys: ['ssnName'],
       fields: [

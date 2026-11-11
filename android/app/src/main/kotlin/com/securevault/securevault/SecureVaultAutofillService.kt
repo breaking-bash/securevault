@@ -62,6 +62,10 @@ class SecureVaultAutofillService : AutofillService() {
         ).intentSender
 
         val presentation = RemoteViews(packageName, R.layout.autofill_item)
+        presentation.setTextViewText(
+            R.id.autofill_label,
+            "SecureVault" + (f.domain?.let { " · $it" } ?: "")
+        )
         val ds = Dataset.Builder(presentation)
         f.userId?.let { ds.setValue(it, null) }
         f.passId?.let { ds.setValue(it, null) }

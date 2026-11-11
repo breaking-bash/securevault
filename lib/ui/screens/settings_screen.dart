@@ -9,6 +9,7 @@ import '../../services/secret_key_service.dart';
 import '../../services/settings_service.dart';
 import '../../state/vault_state.dart';
 import '../widgets/emergency_kit.dart';
+import 'home_screen.dart' show FolderManager;
 import 'import_screen.dart';
 import 'link_send_screen.dart';
 
@@ -40,6 +41,8 @@ class SettingsScreen extends StatelessWidget {
         children: [
           row(Icons.person_outline, const Color(0xFF2DD4A7), 'Accounts',
               const _AccountsPage()),
+          row(Icons.folder_copy_outlined, const Color(0xFFD9A8F0), 'Collections',
+              const _CollectionsPage()),
           row(Icons.tune, const Color(0xFF3FC3EE), 'General',
               const _GeneralPage()),
           row(Icons.lock_outline, const Color(0xFFFFB74D), 'Security',
@@ -179,6 +182,17 @@ class _AccountsPage extends StatelessWidget {
   }
 }
 
+/// Collections are the vault's folders.
+class _CollectionsPage extends StatelessWidget {
+  const _CollectionsPage();
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+        appBar: AppBar(title: const Text('Collections')),
+        body: const SingleChildScrollView(child: FolderManager()),
+      );
+}
+
 // ------------------------------------------------------------------- General
 class _GeneralPage extends StatelessWidget {
   const _GeneralPage();
@@ -303,6 +317,26 @@ class _SecurityPageState extends State<_SecurityPage> {
     return _Page(title: 'Security', children: [
       const _Header('Unlock'),
       _biometricTile(),
+      ListTile(
+        leading: const Icon(Icons.event_repeat_rounded),
+        title: const Text('Require master password'),
+        subtitle: const Text('Biometric unlock stops working after this long'),
+        trailing: DropdownButton<int>(
+          value: s.requirePasswordDays,
+          underline: const SizedBox.shrink(),
+          onChanged: (v) {
+            if (v == null) return;
+            state.updateSettings(s.copyWith(requirePasswordDays: v));
+          },
+          items: const [
+            DropdownMenuItem(value: 0, child: Text('Never')),
+            DropdownMenuItem(value: 1, child: Text('1 day')),
+            DropdownMenuItem(value: 7, child: Text('7 days')),
+            DropdownMenuItem(value: 14, child: Text('14 days')),
+            DropdownMenuItem(value: 30, child: Text('30 days')),
+          ],
+        ),
+      ),
       const _Header('Auto-lock'),
       SwitchListTile(
         secondary: const Icon(Icons.lock_clock_outlined),
