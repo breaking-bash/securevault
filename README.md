@@ -38,6 +38,8 @@ Everything is stored **only on your device** — there is no server, no cloud, n
 - **Watchtower** — flags weak, reused, old, HTTP and missing-2FA logins, and checks breaches via Have I Been Pwned (k-anonymity: only a 5-character SHA-1 prefix is sent).
 - **Watchtower dashboard** — overall strength score, reused/weak/2FA-not-set-up/passkey counts with expandable item lists, and ignore/restore for alerts.
 - **Archive & Recently Deleted** — archive items or soft-delete them (restorable for 30 days).
+- **Android Autofill** — SecureVault is a system autofill service: tap the suggestion on a login form, unlock, pick a login. Enable it in Settings > Autofill service.
+- **Website icons** — favicons for logins (toggle in Settings).
 - **Customize home** — settings dropdown to choose which home sections show.
 - **Secret Key** — a per-account 128-bit key (SV1-XXXXXX-...) mixed with the master password (Argon2id + HKDF), required on new devices. Existing accounts can enable it in Settings.
 - **Link another device** — QR-code pairing over the local network; the vault is sent encrypted (X25519 + AES-256-GCM), and the master password and Secret Key are never transmitted.

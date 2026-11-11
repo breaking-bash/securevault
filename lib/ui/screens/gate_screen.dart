@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../state/vault_state.dart';
+import 'autofill_picker_screen.dart';
 import 'home_screen.dart';
 import 'unlock_screen.dart';
 import 'welcome_screen.dart';
@@ -18,7 +19,9 @@ class GateScreen extends StatelessWidget {
     final Widget screen;
     if (state.unlocked && !state.unlockAnimating) {
       key = 'home';
-      screen = const HomeScreen();
+      screen = state.autofillRequest != null
+          ? AutofillPickerScreen(request: state.autofillRequest!)
+          : const HomeScreen();
     } else if (!state.hasAccounts) {
       // No accounts on this device yet -> first-run welcome / create flow.
       key = 'welcome';

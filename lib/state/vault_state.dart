@@ -10,6 +10,7 @@ import '../models/folder.dart';
 import '../models/secure_note.dart';
 import '../models/vault_entry.dart';
 import '../services/account_service.dart';
+import '../services/autofill_bridge.dart';
 import '../services/biometric_service.dart';
 import '../services/crypto_service.dart';
 import '../services/database_service.dart';
@@ -23,6 +24,9 @@ class VaultState extends ChangeNotifier {
   final _crypto = CryptoService.instance;
   final _accounts = AccountService.instance;
   final _db = DatabaseService.instance;
+
+  // Set when the app was launched by Android autofill.
+  AutofillRequest? autofillRequest;
 
   // ---- settings ----
   AppSettings settings = AppSettings();

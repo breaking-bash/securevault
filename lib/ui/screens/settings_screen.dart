@@ -1,4 +1,5 @@
 import 'dart:io' show Platform;
+import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -84,12 +85,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: s.themeMode,
               onChanged: (m) {
                 if (m == null) return;
-                state.updateSettings(AppSettings(
-                  themeMode: m,
-                  autoLockMinutes: s.autoLockMinutes,
-                  autoLockImmediate: s.autoLockImmediate,
-                  clipboardClearSeconds: s.clipboardClearSeconds,
-                ));
+                state.updateSettings(s.copyWith(themeMode: m));
               },
               items: const [
                 DropdownMenuItem(value: ThemeMode.system, child: Text('System')),
@@ -98,6 +94,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ],
             ),
           ),
+          SwitchListTile(
+            secondary: const Icon(Icons.language),
+            title: const Text('Show website icons'),
+            subtitle: const Text(
+                'Fetches site icons from the web (the domain is sent to an icon service)'),
+            value: s.fetchIcons,
+            onChanged: (v) => state.updateSettings(s.copyWith(fetchIcons: v)),
+          ),
+          if (Platform.isAndroid) const _AutofillTile(),
           const _SectionHeader('Security'),
           ListTile(
             leading: const Icon(Icons.timer_outlined),
@@ -107,12 +112,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: autoLockValue,
               onChanged: (v) {
                 if (v == null) return;
-                state.updateSettings(AppSettings(
-                  themeMode: s.themeMode,
-                  autoLockImmediate: v == -1,
-                  autoLockMinutes: v == -1 ? 0 : v,
-                  clipboardClearSeconds: s.clipboardClearSeconds,
-                ));
+                state.updateSettings(s.copyWith(autoLockImmediate: v == -1, autoLockMinutes: v == -1 ? 0 : v));
               },
               items: const [
                 DropdownMenuItem(value: -1, child: Text('Immediately')),
@@ -135,12 +135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               value: s.clipboardClearSeconds,
               onChanged: (v) {
                 if (v == null) return;
-                state.updateSettings(AppSettings(
-                  themeMode: s.themeMode,
-                  autoLockMinutes: s.autoLockMinutes,
-                  autoLockImmediate: s.autoLockImmediate,
-                  clipboardClearSeconds: v,
-                ));
+                state.updateSettings(s.copyWith(clipboardClearSeconds: v));
               },
               items: const [
                 DropdownMenuItem(value: 0, child: Text('Never')),
@@ -366,4 +361,53 @@ class _SectionHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+
+class _AutofillTile extends StatefulWidget {
+  const _AutofillTile();
+  @override
+  State<_AutofillTile> createState() => _AutofillTileState();
+}
+
+class _AutofillTileState extends State<_AutofillTile>
+    with WidgetsBindingObserver {
+  static const _ch = MethodChannel('securevault/autofill');
+  bool _on = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _refresh();
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState s) {
+    if (s == AppLifecycleState.resumed) _refresh();
+  }
+
+  Future<void> _refresh() async {
+    try {
+      final v = await _ch.invokeMethod<bool>('isEnabled') ?? false;
+      if (mounted) setState(() => _on = v);
+    } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+        leading: const Icon(Icons.auto_fix_high_outlined),
+        title: const Text('Autofill service'),
+        subtitle: Text(_on
+            ? 'SecureVault suggests logins in other apps and sites'
+            : 'Turn on to get login suggestions in other apps'),
+        trailing: Text(_on ? 'On' : 'Set up'),
+        onTap: _on ? null : () => _ch.invokeMethod('openSettings'),
+      );
 }

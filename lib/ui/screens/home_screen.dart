@@ -35,7 +35,6 @@ class _HomeScreenState extends State<HomeScreen> {
           _VaultTab(),
           _GeneratorTab(),
           WatchtowerScreen(),
-          SettingsScreen(),
         ],
       ),
       bottomNavigationBar: NavigationBar(
@@ -54,10 +53,6 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.shield_outlined),
               selectedIcon: Icon(Icons.shield),
               label: 'Watchtower'),
-          NavigationDestination(
-              icon: Icon(Icons.settings_outlined),
-              selectedIcon: Icon(Icons.settings),
-              label: 'Settings'),
         ],
       ),
     );
@@ -75,10 +70,22 @@ class _VaultTab extends StatefulWidget {
 class _VaultTabState extends State<_VaultTab> {
   final _searchCtrl = TextEditingController();
   String _query = '';
+  final _scroll = ScrollController();
+  bool _extended = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scroll.addListener(() {
+      final ext = _scroll.offset < 24;
+      if (ext != _extended) setState(() => _extended = ext);
+    });
+  }
 
   @override
   void dispose() {
     _searchCtrl.dispose();
+    _scroll.dispose();
     super.dispose();
   }
 
@@ -118,9 +125,11 @@ class _VaultTabState extends State<_VaultTab> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _add(context),
         icon: const Icon(Icons.add),
+        isExtended: _extended,
         label: const Text('New Item'),
       ),
       body: CustomScrollView(
+        controller: _scroll,
         slivers: [
           SliverAppBar.large(
             title: Text(state.account?.name ?? 'Vault'),
@@ -178,10 +187,12 @@ class _VaultTabState extends State<_VaultTab> {
   Widget _menu(BuildContext context, VaultState state) {
     return PopupMenuButton<String>(
       tooltip: 'Settings',
-      icon: const Icon(Icons.settings_outlined),
+      icon: const Icon(Icons.vpn_key_outlined),
       onSelected: (v) {
         final nav = Navigator.of(context);
         switch (v) {
+          case 'settings':
+            nav.push(MaterialPageRoute(builder: (_) => const SettingsScreen()));
           case 'customize':
             showModalBottomSheet(
               context: context,
@@ -207,6 +218,11 @@ class _VaultTabState extends State<_VaultTab> {
         }
       },
       itemBuilder: (_) => const [
+        PopupMenuItem(
+            value: 'settings',
+            child: ListTile(
+                leading: Icon(Icons.settings_outlined),
+                title: Text('Settings'))),
         PopupMenuItem(
             value: 'customize',
             child: ListTile(
@@ -458,7 +474,8 @@ class _EntryRow extends StatelessWidget {
         ListTile(
           leading: TypeTile(
               icon: ItemTemplates.of(entry.type).icon,
-              color: ItemTemplates.of(entry.type).color),
+              color: ItemTemplates.of(entry.type).color,
+              url: entry.type == EntryType.login ? entry.url : null),
           title: Text(entry.title.isEmpty ? '(untitled)' : entry.title),
           subtitle: entry.subtitle.isEmpty
               ? null

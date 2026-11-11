@@ -17,16 +17,35 @@ class AppSettings {
   Set<String> hiddenHomeSections;
   // Watchtower alerts the user dismissed, as "<entryId>|<issue>".
   Set<String> ignoredAlerts;
+  bool fetchIcons;
 
   AppSettings({
     Set<String>? hiddenHomeSections,
     Set<String>? ignoredAlerts,
+    this.fetchIcons = true,
     this.themeMode = ThemeMode.system,
     this.autoLockMinutes = 3,
     this.autoLockImmediate = false,
     this.clipboardClearSeconds = 30,
   })  : hiddenHomeSections = hiddenHomeSections ?? {},
         ignoredAlerts = ignoredAlerts ?? {};
+
+  AppSettings copyWith({
+    ThemeMode? themeMode,
+    int? autoLockMinutes,
+    bool? autoLockImmediate,
+    int? clipboardClearSeconds,
+    bool? fetchIcons,
+  }) =>
+      AppSettings(
+        themeMode: themeMode ?? this.themeMode,
+        autoLockMinutes: autoLockMinutes ?? this.autoLockMinutes,
+        autoLockImmediate: autoLockImmediate ?? this.autoLockImmediate,
+        clipboardClearSeconds: clipboardClearSeconds ?? this.clipboardClearSeconds,
+        fetchIcons: fetchIcons ?? this.fetchIcons,
+        hiddenHomeSections: {...hiddenHomeSections},
+        ignoredAlerts: {...ignoredAlerts},
+      );
 
   Map<String, dynamic> toJson() => {
         'themeMode': themeMode.name,
@@ -35,6 +54,7 @@ class AppSettings {
         'clipboardClearSeconds': clipboardClearSeconds,
         'hiddenHomeSections': hiddenHomeSections.toList(),
         'ignoredAlerts': ignoredAlerts.toList(),
+        'fetchIcons': fetchIcons,
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> j) => AppSettings(
@@ -47,6 +67,7 @@ class AppSettings {
         clipboardClearSeconds: (j['clipboardClearSeconds'] ?? 30) as int,
         hiddenHomeSections:
             ((j['hiddenHomeSections'] ?? const []) as List).cast<String>().toSet(),
+        fetchIcons: (j['fetchIcons'] ?? true) as bool,
         ignoredAlerts:
             ((j['ignoredAlerts'] ?? const []) as List).cast<String>().toSet(),
       );

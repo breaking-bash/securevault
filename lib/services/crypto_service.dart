@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:isolate';
 import 'dart:math';
 import 'dart:typed_data';
 
@@ -69,16 +70,22 @@ class CryptoService {
     int parallelism = kdfParallelism,
     List<int>? secretKey,
   }) async {
-    final argon2 = Argon2id(
-      memory: memoryKiB,
-      parallelism: parallelism,
-      iterations: iterations,
-      hashLength: keyLengthBytes,
-    );
-    final base = await argon2.deriveKey(
-      secretKey: SecretKey(utf8.encode(password)),
-      nonce: salt, // Argon2 "nonce" == the salt
-    );
+    // Argon2id is CPU/memory heavy; run it off the UI isolate so the unlock
+    // animation stays smooth and the app never freezes.
+    final baseBytes = await Isolate.run(() async {
+      final argon2 = Argon2id(
+        memory: memoryKiB,
+        parallelism: parallelism,
+        iterations: iterations,
+        hashLength: keyLengthBytes,
+      );
+      final k = await argon2.deriveKey(
+        secretKey: SecretKey(utf8.encode(password)),
+        nonce: salt, // Argon2 "nonce" == the salt
+      );
+      return await k.extractBytes();
+    });
+    final base = SecretKey(baseBytes);
     if (secretKey == null) return base;
     // Two-secret derivation: mix the account Secret Key into the Argon2 output.
     return Hkdf(hmac: Hmac.sha256(), outputLength: keyLengthBytes).deriveKey(

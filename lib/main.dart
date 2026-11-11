@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'services/autofill_bridge.dart';
 import 'state/vault_state.dart';
 import 'ui/theme.dart';
 import 'ui/screens/gate_screen.dart';
@@ -9,6 +10,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   final state = VaultState();
   await state.init();
+  state.autofillRequest = await AutofillBridge.getRequest();
   runApp(SecureVaultApp(state: state));
 }
 

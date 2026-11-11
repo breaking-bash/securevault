@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import '../../models/item_templates.dart';
 import '../../models/vault_entry.dart';
 import '../../state/vault_state.dart';
+import '../widgets/type_tile.dart';
 import '../widgets/totp_code_tile.dart';
 import 'entry_edit_screen.dart';
 
@@ -174,14 +175,11 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
             child: Row(
               children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: tpl.color,
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(tpl.icon, color: Colors.white, size: 30),
+                TypeTile(
+                  icon: tpl.icon,
+                  color: tpl.color,
+                  size: 56,
+                  url: e.type == EntryType.login ? e.url : null,
                 ),
                 const SizedBox(width: 16),
                 Expanded(

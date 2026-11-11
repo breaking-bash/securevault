@@ -80,6 +80,7 @@ class _WatchtowerScreenState extends State<WatchtowerScreen> {
       appBar: AppBar(title: const Text('Watchtower')),
       body: ListView(
         children: [
+          _scoreHeader(context, WatchtowerService.instance.score(active, findings)),
           _strengthCard(context, active),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -89,7 +90,7 @@ class _WatchtowerScreenState extends State<WatchtowerScreen> {
               crossAxisCount: 2,
               mainAxisSpacing: 10,
               crossAxisSpacing: 10,
-              mainAxisExtent: 190,
+              mainAxisExtent: 210,
               children: [
                 _statCard(context, breached.length, 'Compromised Websites',
                     'Data stored by these websites may have been compromised. Change your passwords.',
@@ -185,6 +186,72 @@ class _WatchtowerScreenState extends State<WatchtowerScreen> {
           const SizedBox(height: 24),
         ],
       ),
+    );
+  }
+
+
+  Widget _scoreHeader(BuildContext context, int score) {
+    final pct = score.clamp(0, 100) / 100;
+    final label = score >= 80
+        ? 'FANTASTIC'
+        : score >= 60
+            ? 'GOOD'
+            : score >= 40
+                ? 'FAIR'
+                : 'NEEDS WORK';
+    final c = score >= 80
+        ? const Color(0xFF1BA300)
+        : score >= 60
+            ? const Color(0xFF8AD91E)
+            : score >= 40
+                ? const Color(0xFFFFA900)
+                : const Color(0xFFF4512C);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+      child: Row(children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Watchtower',
+                  style: Theme.of(context)
+                      .textTheme
+                      .headlineMedium
+                      ?.copyWith(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Text(
+                'Your score gives an overall idea of how safe your data is. '
+                'Take action on flagged items to level up your security.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 130,
+          height: 110,
+          child: Stack(alignment: Alignment.center, children: [
+            CustomPaint(
+                size: const Size(130, 110),
+                painter: _GaugePainter(pct, c)),
+            Padding(
+              padding: const EdgeInsets.only(top: 18),
+              child: Column(mainAxisSize: MainAxisSize.min, children: [
+                Text('${score * 10}',
+                    style: const TextStyle(
+                        fontSize: 30, fontWeight: FontWeight.w800)),
+                Text(label,
+                    style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: c)),
+              ]),
+            ),
+          ]),
+        ),
+      ]),
     );
   }
 
@@ -371,4 +438,34 @@ class _WatchtowerScreenState extends State<WatchtowerScreen> {
 
   void _open(BuildContext context, String id) => Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => EntryDetailScreen(entryId: id)));
+}
+
+class _GaugePainter extends CustomPainter {
+  final double pct;
+  final Color color;
+  _GaugePainter(this.pct, this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Rect.fromCircle(
+        center: Offset(size.width / 2, size.height / 2 + 6),
+        radius: size.width / 2 - 10);
+    const start = 0.75 * 3.14159265;
+    const sweep = 1.5 * 3.14159265;
+    final bg = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 12
+      ..strokeCap = StrokeCap.round
+      ..color = color.withValues(alpha: 0.2);
+    final fg = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 12
+      ..strokeCap = StrokeCap.round
+      ..color = color;
+    canvas.drawArc(rect, start, sweep, false, bg);
+    canvas.drawArc(rect, start, sweep * pct, false, fg);
+  }
+
+  @override
+  bool shouldRepaint(_GaugePainter o) => o.pct != pct || o.color != color;
 }

@@ -1,7 +1,35 @@
 package com.securevault.securevault
 
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
+import android.view.autofill.AutofillManager
 import io.flutter.embedding.android.FlutterFragmentActivity
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
 
 // FlutterFragmentActivity is required by local_auth so the biometric prompt
 // can be hosted in a FragmentActivity (needed for BiometricPrompt).
-class MainActivity: FlutterFragmentActivity()
+class MainActivity : FlutterFragmentActivity() {
+    override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+        super.configureFlutterEngine(flutterEngine)
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, "securevault/autofill")
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "getRequest" -> result.success(null)
+                    "isEnabled" -> {
+                        val m = getSystemService(AutofillManager::class.java)
+                        result.success(m?.hasEnabledAutofillServices() == true)
+                    }
+                    "openSettings" -> {
+                        startActivity(
+                            Intent(Settings.ACTION_REQUEST_SET_AUTOFILL_SERVICE)
+                                .setData(Uri.parse("package:$packageName"))
+                        )
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+    }
+}

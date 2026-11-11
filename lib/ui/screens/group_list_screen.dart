@@ -77,6 +77,7 @@ class GroupListScreen extends StatelessWidget {
                 for (final e in entries)
                   _Row(
                     icon: ItemTemplates.of(e.type).icon,
+                    url: e.type == EntryType.login ? e.url : null,
                     color: ItemTemplates.of(e.type).color,
                     title: e.title.isEmpty ? '(untitled)' : e.title,
                     subtitle: e.subtitle,
@@ -104,8 +105,10 @@ class _Row extends StatelessWidget {
   final String title;
   final String subtitle;
   final Color color;
+  final String? url;
   final VoidCallback onTap;
   const _Row({
+    this.url,
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -118,7 +121,7 @@ class _Row extends StatelessWidget {
     return Column(
       children: [
         ListTile(
-          leading: TypeTile(icon: icon, color: color),
+          leading: TypeTile(icon: icon, color: color, url: url),
           title: Text(title),
           subtitle: subtitle.isEmpty
               ? null
