@@ -3,7 +3,7 @@ name: monorepo-ci
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, itsnavin-windows-exe-build]
     paths-ignore: ["lib/**", "android/**", "windows/**", "linux/**", "pubspec.yaml"]
   pull_request:
     paths-ignore: ["lib/**", "android/**", "windows/**", "linux/**", "pubspec.yaml"]
