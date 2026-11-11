@@ -836,23 +836,55 @@ class _HomeTab extends StatelessWidget {
   }
 }
 
-/// Blue rounded "+ New Item" button shared by Home and Vault.
+/// Blue rounded-square "+ New Item" button shared by Home and Vault. Built
+/// from plain Material pieces (not FloatingActionButton) so it looks the same
+/// on every device and Android version; collapses to a square "+" on scroll.
 class _NewItemFab extends StatelessWidget {
   final bool extended;
   const _NewItemFab({required this.extended});
 
+  static const _blue = Color(0xFF0A72FF);
+
   @override
   Widget build(BuildContext context) {
-    return FloatingActionButton.extended(
-      onPressed: () => Navigator.of(context)
-          .push(MaterialPageRoute(builder: (_) => const NewItemScreen())),
-      icon: const Icon(Icons.add),
-      isExtended: extended,
-      label: const Text('New Item'),
+    return Material(
+      color: _blue,
+      elevation: 4,
+      shadowColor: Colors.black54,
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(16),
+        onTap: () => Navigator.of(context)
+            .push(MaterialPageRoute(builder: (_) => const NewItemScreen())),
+        child: AnimatedSize(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeOut,
+          alignment: Alignment.centerLeft,
+          child: SizedBox(
+            height: 56,
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: extended ? 20 : 16),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.add, color: Colors.white, size: 24),
+                  if (extended) ...[
+                    const SizedBox(width: 12),
+                    const Text('New Item',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w500)),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
-
 class _PinnedCard extends StatefulWidget {
   final VaultEntry entry;
   const _PinnedCard({required this.entry});

@@ -37,6 +37,34 @@ Future<Uint8List> buildEmergencyKitPdf(
               style: pw.TextStyle(
                   font: pw.Font.courierBold(), fontSize: 15)),
         ),
+        pw.SizedBox(height: 16),
+        pw.Row(
+          crossAxisAlignment: pw.CrossAxisAlignment.center,
+          children: [
+            pw.Container(
+              padding: const pw.EdgeInsets.all(8),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(width: 1.2),
+                borderRadius: pw.BorderRadius.circular(8),
+              ),
+              child: pw.BarcodeWidget(
+                barcode: pw.Barcode.qrCode(),
+                data: Uri(scheme: 'securevault', host: 'setup', queryParameters: {
+                  'account': accountName,
+                  'key': secretKey,
+                }).toString(),
+                width: 130,
+                height: 130,
+              ),
+            ),
+            pw.SizedBox(width: 16),
+            pw.Expanded(
+              child: pw.Text(
+                  'Scan this QR code to enter your account name and Secret Key on a new device.',
+                  style: const pw.TextStyle(fontSize: 12)),
+            ),
+          ],
+        ),
         pw.SizedBox(height: 14),
         pw.Text('Master password: write it here by hand ____________________',
             style: const pw.TextStyle(fontSize: 12)),

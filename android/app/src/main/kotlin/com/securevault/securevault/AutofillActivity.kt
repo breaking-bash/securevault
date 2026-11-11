@@ -2,7 +2,9 @@ package com.securevault.securevault
 
 import android.app.Activity
 import android.content.Intent
+import android.os.Bundle
 import android.service.autofill.Dataset
+import android.view.WindowManager
 import android.view.autofill.AutofillId
 import android.view.autofill.AutofillManager
 import android.view.autofill.AutofillValue
@@ -13,6 +15,11 @@ import io.flutter.plugin.common.MethodChannel
 
 /** Hosts the Flutter UI (unlock + pick a login) for an autofill request. */
 class AutofillActivity : FlutterFragmentActivity() {
+    override fun onCreate(savedInstanceState: Bundle?) {
+        window.setFlags(WindowManager.LayoutParams.FLAG_SECURE, WindowManager.LayoutParams.FLAG_SECURE)
+        super.onCreate(savedInstanceState)
+    }
+
     companion object {
         const val EXTRA_DOMAIN = "sv_domain"
         const val EXTRA_PACKAGE = "sv_package"

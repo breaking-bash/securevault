@@ -1,4 +1,4 @@
-import 'dart:io' show Platform;
+﻿import 'dart:io' show Platform;
 import 'package:flutter/services.dart';
 
 import 'package:flutter/material.dart';
@@ -78,6 +78,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       body: ListView(
         children: [
           const _SectionHeader('Appearance'),
+          _Card(children: [
           ListTile(
             leading: const Icon(Icons.brightness_6_outlined),
             title: const Text('Theme'),
@@ -102,8 +103,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             value: s.fetchIcons,
             onChanged: (v) => state.updateSettings(s.copyWith(fetchIcons: v)),
           ),
-          if (Platform.isAndroid) const _AutofillTile(),
+          ]),
           const _SectionHeader('Security'),
+          _Card(children: [
           ListTile(
             leading: const Icon(Icons.timer_outlined),
             title: const Text('Auto-lock'),
@@ -164,12 +166,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 : () => _secretKey(context),
           ),
           ListTile(
-            leading: const Icon(Icons.file_download_outlined),
-            title: const Text('Import from another password manager'),
-            subtitle: const Text('1Password, Bitwarden, LastPass, Chrome, Dashlane, KeePass, CSV'),
-            onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const ImportScreen())),
+            leading: const Icon(Icons.lock_outline),
+            title: const Text('Lock vault now'),
+            onTap: () {
+              state.lock();
+              Navigator.of(context).popUntil((r) => r.isFirst);
+            },
           ),
+          ]),
+          const _SectionHeader('Autofill & devices'),
+          _Card(children: [
+            if (Platform.isAndroid) const _AutofillTile(),
           if (Platform.isAndroid || Platform.isIOS)
             ListTile(
               leading: const Icon(Icons.qr_code_scanner),
@@ -178,25 +185,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
                   builder: (_) => const LinkSendScreen())),
             ),
+          ]),
+          const _SectionHeader('Data'),
+          _Card(children: [
           ListTile(
-            leading: const Icon(Icons.lock_outline),
-            title: const Text('Lock vault now'),
-            onTap: () {
-              state.lock();
-              Navigator.of(context).popUntil((r) => r.isFirst);
-            },
+            leading: const Icon(Icons.file_download_outlined),
+            title: const Text('Import from another password manager'),
+            subtitle: const Text('1Password, Bitwarden, LastPass, Chrome, Dashlane, KeePass, CSV'),
+            onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const ImportScreen())),
           ),
+          ]),
           const _SectionHeader('About'),
-          const ListTile(
-            leading: Icon(Icons.shield_outlined),
-            title: Text('SecureVault'),
-            subtitle: Text(
-                'Zero-knowledge, on-device password manager.\n'
-                'Argon2id key derivation · AES-256-GCM encryption.\n'
-                'All data is stored locally on this device only.'),
-            isThreeLine: true,
-          ),
-        ],
+          _Card(children: [
+            const ListTile(
+              leading: Icon(Icons.shield_outlined),
+              title: Text('SecureVault'),
+              subtitle: Text('Your passwords, secured on your device.'),
+            ),
+            const ListTile(
+              leading: Icon(Icons.person_outline),
+              title: Text('Developer'),
+              subtitle: Text('@itsnavin'),
+            ),
+            Builder(
+              builder: (ctx) => ListTile(
+                leading: const Icon(Icons.code),
+                title: const Text('Source code'),
+                subtitle: const Text('github.com/itsnavin/securevault'),
+                trailing: const Icon(Icons.copy, size: 18),
+                onTap: () async {
+                  await Clipboard.setData(const ClipboardData(
+                      text: 'https://github.com/itsnavin/securevault'));
+                  if (ctx.mounted) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                        const SnackBar(content: Text('Link copied')));
+                  }
+                },
+              ),
+            ),
+          ]),
+          const SizedBox(height: 24),        ],
       ),
     );
   }
@@ -212,7 +241,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       return const ListTile(
         leading: Icon(Icons.fingerprint),
         title: Text('Biometric unlock'),
-        subtitle: Text('Checking availability…'),
+        subtitle: Text('Checking availabilityâ€¦'),
       );
     }
     if (!_bioAvailable) {
@@ -334,11 +363,35 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: const Text('Cancel')),
               FilledButton(
                 onPressed: busy ? null : submit,
-                child: Text(busy ? 'Working…' : 'Change'),
+                child: Text(busy ? 'Workingâ€¦' : 'Change'),
               ),
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+/// Rounded card that groups a settings section's tiles.
+class _Card extends StatelessWidget {
+  final List<Widget> children;
+  const _Card({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Material(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(16),
+        clipBehavior: Clip.antiAlias,
+        child: Column(children: [
+          for (var i = 0; i < children.length; i++) ...[
+            if (i > 0) const Divider(height: 0, indent: 56),
+            children[i],
+          ],
+        ]),
       ),
     );
   }
