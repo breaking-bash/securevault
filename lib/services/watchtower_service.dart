@@ -42,6 +42,29 @@ class WatchtowerService {
     'discord.com',
   ];
 
+  /// Overall password health 0-100 across all login passwords.
+  int score(List<VaultEntry> entries, List<WatchtowerFinding> findings) {
+    final logins =
+        entries.where((e) => e.type == EntryType.login && e.password.isNotEmpty);
+    if (logins.isEmpty) return 100;
+    final reused = {
+      for (final f in findings.where((f) => f.issue == WatchtowerIssue.reused))
+        f.entry.id
+    };
+    final old = {
+      for (final f in findings.where((f) => f.issue == WatchtowerIssue.old))
+        f.entry.id
+    };
+    var total = 0.0;
+    for (final e in logins) {
+      var s = (PasswordGenerator.instance.strength(e.password) + 1) * 20.0;
+      if (reused.contains(e.id)) s -= 40;
+      if (old.contains(e.id)) s -= 15;
+      total += s.clamp(0, 100);
+    }
+    return (total / logins.length).round();
+  }
+
   List<WatchtowerFinding> analyze(List<VaultEntry> entries, {DateTime? now}) {
     final clock = now ?? DateTime.now();
     final logins = entries.where((e) => e.type == EntryType.login).toList();

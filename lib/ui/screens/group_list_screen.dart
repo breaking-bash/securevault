@@ -37,7 +37,7 @@ class GroupListScreen extends StatelessWidget {
     List<SecureNote> notes;
     switch (filter) {
       case GroupFilter.type:
-        entries = state.entries.where((e) => e.type == entryType).toList();
+        entries = state.activeEntries.where((e) => e.type == entryType).toList();
         notes = const [];
         break;
       case GroupFilter.notes:
@@ -45,11 +45,11 @@ class GroupListScreen extends StatelessWidget {
         notes = state.notes;
         break;
       case GroupFilter.folder:
-        entries = state.entries.where((e) => e.folderId == folderId).toList();
+        entries = state.activeEntries.where((e) => e.folderId == folderId).toList();
         notes = state.notes.where((n) => n.folderId == folderId).toList();
         break;
       case GroupFilter.tag:
-        entries = state.entries.where((e) => e.tags.contains(tag)).toList();
+        entries = state.activeEntries.where((e) => e.tags.contains(tag)).toList();
         notes = const [];
         break;
     }

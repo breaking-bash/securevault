@@ -13,19 +13,28 @@ class AppSettings {
   // (zero idle grace). Takes precedence over [autoLockMinutes].
   bool autoLockImmediate;
   int clipboardClearSeconds; // 0 = never auto-clear
+  // Home sections the user has hidden: tags, categories, folders, noFolder.
+  Set<String> hiddenHomeSections;
+  // Watchtower alerts the user dismissed, as "<entryId>|<issue>".
+  Set<String> ignoredAlerts;
 
   AppSettings({
+    Set<String>? hiddenHomeSections,
+    Set<String>? ignoredAlerts,
     this.themeMode = ThemeMode.system,
     this.autoLockMinutes = 3,
     this.autoLockImmediate = false,
     this.clipboardClearSeconds = 30,
-  });
+  })  : hiddenHomeSections = hiddenHomeSections ?? {},
+        ignoredAlerts = ignoredAlerts ?? {};
 
   Map<String, dynamic> toJson() => {
         'themeMode': themeMode.name,
         'autoLockMinutes': autoLockMinutes,
         'autoLockImmediate': autoLockImmediate,
         'clipboardClearSeconds': clipboardClearSeconds,
+        'hiddenHomeSections': hiddenHomeSections.toList(),
+        'ignoredAlerts': ignoredAlerts.toList(),
       };
 
   factory AppSettings.fromJson(Map<String, dynamic> j) => AppSettings(
@@ -36,6 +45,10 @@ class AppSettings {
         autoLockMinutes: (j['autoLockMinutes'] ?? 3) as int,
         autoLockImmediate: (j['autoLockImmediate'] ?? false) as bool,
         clipboardClearSeconds: (j['clipboardClearSeconds'] ?? 30) as int,
+        hiddenHomeSections:
+            ((j['hiddenHomeSections'] ?? const []) as List).cast<String>().toSet(),
+        ignoredAlerts:
+            ((j['ignoredAlerts'] ?? const []) as List).cast<String>().toSet(),
       );
 }
 

@@ -63,9 +63,16 @@ class VaultState extends ChangeNotifier {
     notifyListeners();
   }
 
+  List<VaultEntry> get activeEntries =>
+      entries.where((e) => e.isActive).toList();
+  List<VaultEntry> get archivedEntries =>
+      entries.where((e) => e.archived && !e.isTrashed).toList();
+  List<VaultEntry> get trashedEntries =>
+      entries.where((e) => e.isTrashed).toList();
+
   /// All distinct tags across items, sorted.
   List<String> get allTags {
-    final s = <String>{for (final e in entries) ...e.tags};
+    final s = <String>{for (final e in activeEntries) ...e.tags};
     return s.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
   }
   bool get hasAccounts => accountsList.isNotEmpty;
@@ -212,6 +219,7 @@ class VaultState extends ChangeNotifier {
     }
     folders
         .sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    await _purgeExpired();
   }
 
   SealedBox _sealedFrom(String payload) =>
@@ -250,10 +258,40 @@ class VaultState extends ChangeNotifier {
   }
 
   Future<void> deleteEntry(VaultEntry entry) async {
+    entry.deletedAt = DateTime.now();
+    await saveEntry(entry);
+  }
+
+  Future<void> setArchived(VaultEntry entry, bool value) async {
+    entry.archived = value;
+    await saveEntry(entry);
+  }
+
+  Future<void> restoreEntry(VaultEntry entry) async {
+    entry.deletedAt = null;
+    await saveEntry(entry);
+  }
+
+  Future<void> purgeEntry(VaultEntry entry) async {
     _touch();
     await _db.deleteEntry(entry.id);
     entries.removeWhere((e) => e.id == entry.id);
     notifyListeners();
+  }
+
+  Future<void> emptyTrash() async {
+    for (final e in trashedEntries.toList()) {
+      await purgeEntry(e);
+    }
+  }
+
+  Future<void> _purgeExpired() async {
+    final cutoff = DateTime.now().subtract(const Duration(days: 30));
+    for (final e in entries.where((e) =>
+        e.deletedAt != null && e.deletedAt!.isBefore(cutoff)).toList()) {
+      await _db.deleteEntry(e.id);
+      entries.remove(e);
+    }
   }
 
   // ------------------------------------------------------------ device link

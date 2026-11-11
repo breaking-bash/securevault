@@ -105,8 +105,13 @@ class VaultEntry {
   String notes;
   String? totp;
   String? folderId;
+  bool archived;
+  DateTime? deletedAt;
   final DateTime createdAt;
   DateTime updatedAt;
+
+  bool get isTrashed => deletedAt != null;
+  bool get isActive => !archived && deletedAt == null;
 
   /// Short secondary line shown under the title in lists.
   String get subtitle {
@@ -138,6 +143,8 @@ class VaultEntry {
     this.notes = '',
     this.totp,
     this.folderId,
+    this.archived = false,
+    this.deletedAt,
     required this.createdAt,
     required this.updatedAt,
   })  : extra = extra ?? {},
@@ -159,6 +166,8 @@ class VaultEntry {
         'fields': customFields.map((f) => f.toJson()).toList(),
         'tags': tags,
         'files': attachments.map((a) => a.toJson()).toList(),
+        'archived': archived,
+        'deletedAt': deletedAt?.millisecondsSinceEpoch,
       };
 
   factory VaultEntry.fromSecretJson(
@@ -188,6 +197,10 @@ class VaultEntry {
       notes: (json['notes'] ?? '') as String,
       totp: json['totp'] as String?,
       folderId: folderId,
+      archived: (json['archived'] ?? false) as bool,
+      deletedAt: json['deletedAt'] == null
+          ? null
+          : DateTime.fromMillisecondsSinceEpoch(json['deletedAt'] as int),
       createdAt: createdAt,
       updatedAt: updatedAt,
     );

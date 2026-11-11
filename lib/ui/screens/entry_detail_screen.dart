@@ -146,6 +146,16 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
                 builder: (_) => EntryEditScreen(entryId: e.id))),
           ),
           IconButton(
+            tooltip: e.archived ? 'Unarchive' : 'Archive',
+            icon: Icon(e.archived
+                ? Icons.unarchive_outlined
+                : Icons.archive_outlined),
+            onPressed: () async {
+              await state.setArchived(e, !e.archived);
+              if (context.mounted) Navigator.of(context).pop();
+            },
+          ),
+          IconButton(
             tooltip: 'Delete',
             icon: const Icon(Icons.delete_outline),
             onPressed: () async {
@@ -264,8 +274,9 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
   Future<bool?> _confirmDelete(BuildContext context) => showDialog<bool>(
         context: context,
         builder: (_) => AlertDialog(
-          title: const Text('Delete item?'),
-          content: const Text('This cannot be undone.'),
+          title: const Text('Move to Recently Deleted?'),
+          content: const Text(
+              'You can restore it within 30 days, after which it is deleted permanently.'),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context, false),

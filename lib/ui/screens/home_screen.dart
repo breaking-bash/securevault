@@ -8,6 +8,7 @@ import '../../state/vault_state.dart';
 import '../widgets/generator_sheet.dart';
 import '../widgets/type_tile.dart';
 import 'entry_detail_screen.dart';
+import 'archive_screen.dart';
 import 'group_list_screen.dart';
 import 'new_item_screen.dart';
 import 'note_edit_screen.dart';
@@ -83,7 +84,7 @@ class _VaultTabState extends State<_VaultTab> {
 
   List<VaultEntry> _matchEntries(VaultState s) {
     final q = _query.toLowerCase();
-    return s.entries
+    return s.activeEntries
         .where((e) =>
             e.title.toLowerCase().contains(q) ||
             e.username.toLowerCase().contains(q) ||
@@ -123,13 +124,7 @@ class _VaultTabState extends State<_VaultTab> {
         slivers: [
           SliverAppBar.large(
             title: Text(state.account?.name ?? 'Vault'),
-            actions: [
-              IconButton(
-                tooltip: 'More',
-                icon: const Icon(Icons.more_horiz),
-                onPressed: () => _showOverflow(context, state),
-              ),
-            ],
+            actions: [_menu(context, state)],
           ),
           SliverToBoxAdapter(
             child: Padding(
@@ -171,11 +166,8 @@ class _VaultTabState extends State<_VaultTab> {
         children: [
           ListTile(
             title: const Text('Vault: All'),
-            trailing: IconButton(
-              icon: const Icon(Icons.more_horiz),
-              tooltip: 'More',
-              onPressed: () => _showOverflow(context, state),
-            ),
+            trailing: Text(
+                '${state.activeEntries.length + state.notes.length} items'),
           ),
           const Divider(height: 0, indent: 16, endIndent: 16),
         ],
@@ -183,62 +175,85 @@ class _VaultTabState extends State<_VaultTab> {
     );
   }
 
-  void _showOverflow(BuildContext context, VaultState state) {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.create_new_folder_outlined),
-              title: const Text('Manage folders'),
-              onTap: () {
-                Navigator.pop(context);
-                showModalBottomSheet(
-                  context: context,
-                  showDragHandle: true,
-                  isScrollControlled: true,
-                  builder: (_) => const FolderManager(),
-                );
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.switch_account_outlined),
-              title: const Text('Switch account'),
-              onTap: () {
-                Navigator.pop(context);
-                state.signOut();
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.lock_outline),
-              title: const Text('Lock vault now'),
-              onTap: () {
-                Navigator.pop(context);
-                state.lock();
-              },
-            ),
-          ],
-        ),
-      ),
+  Widget _menu(BuildContext context, VaultState state) {
+    return PopupMenuButton<String>(
+      tooltip: 'Settings',
+      icon: const Icon(Icons.settings_outlined),
+      onSelected: (v) {
+        final nav = Navigator.of(context);
+        switch (v) {
+          case 'customize':
+            showModalBottomSheet(
+              context: context,
+              showDragHandle: true,
+              builder: (_) => const _CustomizeHome(),
+            );
+          case 'archive':
+            nav.push(MaterialPageRoute(builder: (_) => const ArchiveScreen()));
+          case 'trash':
+            nav.push(MaterialPageRoute(
+                builder: (_) => const ArchiveScreen(trash: true)));
+          case 'folders':
+            showModalBottomSheet(
+              context: context,
+              showDragHandle: true,
+              isScrollControlled: true,
+              builder: (_) => const FolderManager(),
+            );
+          case 'switch':
+            state.signOut();
+          case 'lock':
+            state.lock();
+        }
+      },
+      itemBuilder: (_) => const [
+        PopupMenuItem(
+            value: 'customize',
+            child: ListTile(
+                leading: Icon(Icons.tune), title: Text('Customize home'))),
+        PopupMenuItem(
+            value: 'archive',
+            child: ListTile(
+                leading: Icon(Icons.archive_outlined), title: Text('Archive'))),
+        PopupMenuItem(
+            value: 'trash',
+            child: ListTile(
+                leading: Icon(Icons.delete_outline),
+                title: Text('Recently Deleted'))),
+        PopupMenuItem(
+            value: 'folders',
+            child: ListTile(
+                leading: Icon(Icons.create_new_folder_outlined),
+                title: Text('Manage folders'))),
+        PopupMenuDivider(),
+        PopupMenuItem(
+            value: 'switch',
+            child: ListTile(
+                leading: Icon(Icons.switch_account_outlined),
+                title: Text('Switch account'))),
+        PopupMenuItem(
+            value: 'lock',
+            child: ListTile(
+                leading: Icon(Icons.lock_outline),
+                title: Text('Lock vault now'))),
+      ],
     );
   }
 
   // ---- grouped overview (TYPES / FOLDERS / NO FOLDER) ----
   List<Widget> _grouped(BuildContext context, VaultState state) {
+    bool show(String k) => !state.settings.hiddenHomeSections.contains(k);
     final noFolderEntries =
-        state.entries.where((e) => e.folderId == null).toList();
+        state.activeEntries.where((e) => e.folderId == null).toList();
     final noFolderNotes = state.notes.where((n) => n.folderId == null).toList();
     final noFolderCount = noFolderEntries.length + noFolderNotes.length;
     final typeCount = ItemTemplates.pickerOrder
-            .where((t) => state.entries.any((e) => e.type == t))
+            .where((t) => state.activeEntries.any((e) => e.type == t))
             .length +
         (state.notes.isEmpty ? 0 : 1);
 
     return [
-      if (state.allTags.isNotEmpty) ...[
+      if (show('tags') && state.allTags.isNotEmpty) ...[
         _SectionHeader('TAGS', state.allTags.length),
         SliverToBoxAdapter(
           child: Padding(
@@ -263,15 +278,16 @@ class _VaultTabState extends State<_VaultTab> {
           ),
         ),
       ],
-      _SectionHeader('CATEGORIES', typeCount),
+      if (show('categories')) _SectionHeader('CATEGORIES', typeCount),
+      if (show('categories'))
       for (final t in ItemTemplates.pickerOrder)
-        if (state.entries.any((e) => e.type == t))
+        if (state.activeEntries.any((e) => e.type == t))
           SliverToBoxAdapter(
             child: _VaultRow(
               icon: ItemTemplates.of(t).icon,
               color: ItemTemplates.of(t).color,
               label: ItemTemplates.of(t).label,
-              count: state.entries.where((e) => e.type == t).length,
+              count: state.activeEntries.where((e) => e.type == t).length,
               onTap: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => GroupListScreen(
                     title: ItemTemplates.of(t).label,
@@ -280,7 +296,7 @@ class _VaultTabState extends State<_VaultTab> {
               )),
             ),
           ),
-      if (state.notes.isNotEmpty)
+      if (show('categories') && state.notes.isNotEmpty)
         SliverToBoxAdapter(
           child: _VaultRow(
             icon: Icons.sticky_note_2_outlined,
@@ -293,9 +309,10 @@ class _VaultTabState extends State<_VaultTab> {
             )),
           ),
         ),
-      _SectionHeader('FOLDERS', state.folders.length),
+      if (show('folders')) _SectionHeader('FOLDERS', state.folders.length),
+      if (show('folders'))
       ...state.folders.map((f) {
-        final count = state.entries.where((e) => e.folderId == f.id).length +
+        final count = state.activeEntries.where((e) => e.folderId == f.id).length +
             state.notes.where((n) => n.folderId == f.id).length;
         return SliverToBoxAdapter(
           child: _VaultRow(
@@ -310,14 +327,15 @@ class _VaultTabState extends State<_VaultTab> {
           ),
         );
       }),
-      _SectionHeader('NO FOLDER', noFolderCount),
-      if (noFolderCount == 0)
+      if (show('noFolder')) _SectionHeader('NO FOLDER', noFolderCount),
+      if (show('noFolder') && noFolderCount == 0)
         const SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
             child: Text('Nothing here yet — tap New Item to add one.'),
           ),
         ),
+      if (show('noFolder'))
       SliverList.list(children: [
         ...noFolderEntries.map((e) => _EntryRow(entry: e)),
         ...noFolderNotes.map((n) => _NoteRow(note: n)),
@@ -597,6 +615,47 @@ class _FolderManagerState extends State<FolderManager> {
           FilledButton(
               onPressed: () => Navigator.pop(context, ctrl.text),
               child: const Text('Save')),
+        ],
+      ),
+    );
+  }
+}
+
+
+class _CustomizeHome extends StatelessWidget {
+  const _CustomizeHome();
+
+  static const _sections = {
+    'tags': 'Tags',
+    'categories': 'Categories',
+    'folders': 'Folders',
+    'noFolder': 'Items without a folder',
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<VaultState>();
+    return SafeArea(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const ListTile(
+            title: Text('Customize home',
+                style: TextStyle(fontWeight: FontWeight.w700)),
+            subtitle: Text('Choose what appears on your home screen'),
+          ),
+          for (final e in _sections.entries)
+            SwitchListTile(
+              title: Text(e.value),
+              value: !state.settings.hiddenHomeSections.contains(e.key),
+              onChanged: (v) {
+                final s = state.settings;
+                final hidden = {...s.hiddenHomeSections};
+                v ? hidden.remove(e.key) : hidden.add(e.key);
+                s.hiddenHomeSections = hidden;
+                state.updateSettings(s);
+              },
+            ),
         ],
       ),
     );
