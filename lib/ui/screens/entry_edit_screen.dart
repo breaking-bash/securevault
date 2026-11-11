@@ -477,12 +477,28 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
         state.allTags.where((t) => !_tags.contains(t)).take(8).toList();
     return Scaffold(
       appBar: AppBar(
-        title: Text('${_isNew ? 'New' : 'Edit'} ${_tpl.label}'),
+        backgroundColor: Theme.of(context).brightness == Brightness.dark
+            ? const Color(0xFF1B2447)
+            : const Color(0xFFE9E7FB),
+        leading: IconButton(
+          icon: const Icon(Icons.close),
+          onPressed: () => Navigator.of(context).maybePop(),
+        ),
+        title: Text(_isNew ? 'New ${_tpl.label}' : 'Editing',
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
         actions: [
-          TextButton.icon(
-            onPressed: _save,
-            icon: const Icon(Icons.check),
-            label: const Text('Save'),
+          Padding(
+            padding: const EdgeInsets.only(right: 12),
+            child: FilledButton(
+              onPressed: _save,
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(72, 36),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Save'),
+            ),
           ),
         ],
       ),
