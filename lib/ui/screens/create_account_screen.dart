@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/account_service.dart';
@@ -62,6 +63,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       return;
     }
 
+    if (mounted) await _showSecretKey();
     // BUG 2: on success, clear the form and navigate away (replace) so the
     // signup page — with its entered values — is removed from the back stack.
     if (!mounted) return;
@@ -71,6 +73,44 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     // The GateScreen at the root reactively shows the unlocked HomeScreen, so
     // popping the pushed signup route reveals it with no stale field values.
     Navigator.of(context).popUntil((r) => r.isFirst);
+  }
+
+  Future<void> _showSecretKey() async {
+    final key = context.read<VaultState>().sessionSecretKey;
+    if (key == null) return;
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Save your Secret Key'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+                'You need this key plus your master password to sign in on a '
+                'new device. It cannot be recovered - store it somewhere safe.'),
+            const SizedBox(height: 16),
+            SelectableText(key,
+                style: const TextStyle(
+                    fontFamily: 'monospace',
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold)),
+          ],
+        ),
+        actions: [
+          TextButton.icon(
+            onPressed: () => Clipboard.setData(ClipboardData(text: key)),
+            icon: const Icon(Icons.copy),
+            label: const Text('Copy'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('I saved it'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override

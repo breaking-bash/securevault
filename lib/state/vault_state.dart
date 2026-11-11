@@ -13,6 +13,7 @@ import '../services/account_service.dart';
 import '../services/biometric_service.dart';
 import '../services/crypto_service.dart';
 import '../services/database_service.dart';
+import '../services/secret_key_service.dart';
 import '../services/settings_service.dart';
 
 /// Central app controller. Holds the in-memory master key while unlocked,
@@ -37,6 +38,17 @@ class VaultState extends ChangeNotifier {
   // Cleared on lock(); never persisted by VaultState itself.
   String? _sessionMasterPassword;
   String? get sessionMasterPassword => _sessionMasterPassword;
+
+  // Account Secret Key for the current session (null for legacy accounts).
+  String? _sessionSecretKey;
+  String? get sessionSecretKey => _sessionSecretKey;
+
+  /// True if unlocking [account] needs the user to type its Secret Key (it is
+  /// required but not stored on this device).
+  Future<bool> needsSecretKey(LocalAccount account) async {
+    if (!account.secretKeyRequired) return false;
+    return await SecretKeyService.instance.load(account.id) == null;
+  }
 
   LocalAccount? get account => _account;
   bool get unlocked => _unlocked;
@@ -67,17 +79,31 @@ class VaultState extends ChangeNotifier {
     required String name,
     required String masterPassword,
   }) async {
+    final sk = SecretKeyService.instance;
+    final secretKey = sk.generate();
     final account = await _accounts.createAccount(
-        name: name, masterPassword: masterPassword);
+        name: name,
+        masterPassword: masterPassword,
+        secretKey: sk.parse(secretKey));
     accountsList = await _accounts.listAccounts();
-    await unlock(account: account, masterPassword: masterPassword);
+    await unlock(
+        account: account,
+        masterPassword: masterPassword,
+        secretKey: secretKey);
   }
 
   /// Returns true on success, false if the master password was wrong.
   Future<bool> unlock({
     required LocalAccount account,
     required String masterPassword,
+    String? secretKey,
   }) async {
+    final sk = SecretKeyService.instance;
+    String? secretText;
+    if (account.secretKeyRequired) {
+      secretText = secretKey ?? await sk.load(account.id);
+      if (secretText == null || sk.parse(secretText) == null) return false;
+    }
     final salt = base64Decode(account.kdfSalt);
     final key = await _crypto.deriveKey(
       password: masterPassword,
@@ -85,6 +111,7 @@ class VaultState extends ChangeNotifier {
       memoryKiB: account.kdfMemory,
       iterations: account.kdfIterations,
       parallelism: account.kdfParallelism,
+      secretKey: secretText == null ? null : sk.parse(secretText),
     );
     final verifier = SealedBox(
         account.verifierNonce, account.verifierCipher, account.verifierMac);
@@ -95,6 +122,8 @@ class VaultState extends ChangeNotifier {
     _key = key;
     _unlocked = true;
     _sessionMasterPassword = masterPassword;
+    _sessionSecretKey = secretText;
+    if (secretText != null) await sk.save(account.id, secretText);
 
     await _db.open(await _accounts.vaultPathFor(account.id));
     await _loadAll();
@@ -109,6 +138,7 @@ class VaultState extends ChangeNotifier {
     _key = null;
     _unlocked = false;
     _sessionMasterPassword = null;
+    _sessionSecretKey = null;
     entries.clear();
     notes.clear();
     folders.clear();
@@ -333,9 +363,15 @@ class VaultState extends ChangeNotifier {
   Future<bool> changeMasterPassword({
     required String currentPassword,
     required String newPassword,
+    String? newSecretKey,
   }) async {
     final acc = _account;
     if (acc == null || _key == null) return false;
+    final sk = SecretKeyService.instance;
+    final curSecret =
+        _sessionSecretKey == null ? null : sk.parse(_sessionSecretKey!);
+    final nextSecretText = newSecretKey ?? _sessionSecretKey;
+    final nextSecret = nextSecretText == null ? null : sk.parse(nextSecretText);
 
     // Verify current password.
     final curKey = await _crypto.deriveKey(
@@ -344,6 +380,7 @@ class VaultState extends ChangeNotifier {
       memoryKiB: acc.kdfMemory,
       iterations: acc.kdfIterations,
       parallelism: acc.kdfParallelism,
+      secretKey: curSecret,
     );
     final verifier =
         SealedBox(acc.verifierNonce, acc.verifierCipher, acc.verifierMac);
@@ -357,6 +394,7 @@ class VaultState extends ChangeNotifier {
       memoryKiB: CryptoService.kdfMemoryKiB,
       iterations: CryptoService.kdfIterations,
       parallelism: CryptoService.kdfParallelism,
+      secretKey: nextSecret,
     );
 
     // Re-encrypt all payloads with the new key.
@@ -385,11 +423,14 @@ class VaultState extends ChangeNotifier {
       verifierNonce: newVerifier.nonce,
       verifierCipher: newVerifier.cipher,
       verifierMac: newVerifier.mac,
+      secretKeyRequired: nextSecret != null,
     );
     await _accounts.updateAccount(updated);
     _account = updated;
     _key = newKey;
     _sessionMasterPassword = newPassword;
+    _sessionSecretKey = nextSecretText;
+    if (nextSecretText != null) await sk.save(updated.id, nextSecretText);
     accountsList = await _accounts.listAccounts();
 
     // Keep the biometric-gated keystore in sync if this account opted in.

@@ -29,6 +29,9 @@ class LocalAccount {
 
   final DateTime createdAt;
 
+  /// True when the key is derived from the master password AND a Secret Key.
+  final bool secretKeyRequired;
+
   LocalAccount({
     required this.id,
     required this.name,
@@ -40,6 +43,7 @@ class LocalAccount {
     required this.verifierCipher,
     required this.verifierMac,
     required this.createdAt,
+    this.secretKeyRequired = false,
   });
 
   Map<String, dynamic> toJson() => {
@@ -53,6 +57,7 @@ class LocalAccount {
         'verifierCipher': verifierCipher,
         'verifierMac': verifierMac,
         'createdAt': createdAt.toIso8601String(),
+        'secretKeyRequired': secretKeyRequired,
       };
 
   factory LocalAccount.fromJson(Map<String, dynamic> json) => LocalAccount(
@@ -66,6 +71,7 @@ class LocalAccount {
         verifierCipher: json['verifierCipher'] as String,
         verifierMac: json['verifierMac'] as String,
         createdAt: DateTime.parse(json['createdAt'] as String),
+        secretKeyRequired: (json['secretKeyRequired'] ?? false) as bool,
       );
 
   LocalAccount copyWith({
@@ -74,6 +80,7 @@ class LocalAccount {
     String? verifierNonce,
     String? verifierCipher,
     String? verifierMac,
+    bool? secretKeyRequired,
   }) =>
       LocalAccount(
         id: id,
@@ -86,5 +93,6 @@ class LocalAccount {
         verifierCipher: verifierCipher ?? this.verifierCipher,
         verifierMac: verifierMac ?? this.verifierMac,
         createdAt: createdAt,
+        secretKeyRequired: secretKeyRequired ?? this.secretKeyRequired,
       );
 }

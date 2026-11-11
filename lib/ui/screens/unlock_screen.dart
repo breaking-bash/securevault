@@ -18,6 +18,7 @@ class UnlockScreen extends StatefulWidget {
 class _UnlockScreenState extends State<UnlockScreen> {
   LocalAccount? _selected;
   final _pw = TextEditingController();
+  final _sk = TextEditingController();
   bool _obscure = true;
   bool _busy = false;
   String? _error;
@@ -35,6 +36,7 @@ class _UnlockScreenState extends State<UnlockScreen> {
   @override
   void dispose() {
     _pw.dispose();
+    _sk.dispose();
     super.dispose();
   }
 
@@ -84,13 +86,31 @@ class _UnlockScreenState extends State<UnlockScreen> {
       _busy = true;
       _error = null;
     });
-    final ok = await state.unlock(account: account, masterPassword: _pw.text);
+    final needSk = await state.needsSecretKey(account);
+    if (needSk && _sk.text.trim().isEmpty) {
+      setState(() {
+        _busy = false;
+        _error = 'Enter your Secret Key';
+      });
+      return;
+    }
+    final ok = await state.unlock(
+        account: account,
+        masterPassword: _pw.text,
+        secretKey: needSk ? _sk.text : null);
     if (!mounted) return;
     setState(() {
       _busy = false;
-      if (!ok) _error = 'Incorrect master password';
+      if (!ok) {
+        _error = needSk
+            ? 'Incorrect master password or Secret Key'
+            : 'Incorrect master password';
+      }
     });
-    if (ok) _pw.clear();
+    if (ok) {
+      _pw.clear();
+      _sk.clear();
+    }
   }
 
   @override
@@ -140,6 +160,29 @@ class _UnlockScreenState extends State<UnlockScreen> {
                     ),
                   ),
                 const SizedBox(height: 16),
+                FutureBuilder<bool>(
+                  key: ValueKey(_selected?.id),
+                  future: state.needsSecretKey(_selected!),
+                  builder: (context, snap) {
+                    if (snap.data != true) return const SizedBox.shrink();
+                    return Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: TextFormField(
+                        controller: _sk,
+                        autocorrect: false,
+                        enableSuggestions: false,
+                        textCapitalization: TextCapitalization.characters,
+                        decoration: const InputDecoration(
+                          labelText: 'Secret Key',
+                          hintText: 'SV1-XXXXXX-XXXXXX-...',
+                          helperText:
+                              'Required on new devices. Find it in Settings.',
+                          prefixIcon: Icon(Icons.vpn_key_outlined),
+                        ),
+                      ),
+                    );
+                  },
+                ),
                 TextFormField(
                   controller: _pw,
                   obscureText: _obscure,

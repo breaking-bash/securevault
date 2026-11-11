@@ -1,9 +1,11 @@
 import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/biometric_service.dart';
+import '../../services/secret_key_service.dart';
 import '../../services/settings_service.dart';
 import '../../state/vault_state.dart';
 import 'link_send_screen.dart';
@@ -153,6 +155,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: const Text('Re-encrypts the whole vault'),
             onTap: () => _changeMasterPassword(context),
           ),
+          ListTile(
+            leading: const Icon(Icons.vpn_key_outlined),
+            title: Text(state.sessionSecretKey != null
+                ? 'View Secret Key'
+                : 'Enable Secret Key'),
+            subtitle: const Text('Required with your password on new devices'),
+            onTap: () => _secretKey(context),
+          ),
           if (Platform.isAndroid || Platform.isIOS)
             ListTile(
               leading: const Icon(Icons.qr_code_scanner),
@@ -214,6 +224,40 @@ class _SettingsScreenState extends State<SettingsScreen> {
           'biometric-gated OS keystore.'),
       value: _bioEnabled,
       onChanged: _toggleBiometric,
+    );
+  }
+
+  Future<void> _secretKey(BuildContext context) async {
+    final state = context.read<VaultState>();
+    var key = state.sessionSecretKey;
+    if (key == null) {
+      final pw = state.sessionMasterPassword;
+      if (pw == null) return;
+      final fresh = SecretKeyService.instance.generate();
+      final ok = await state.changeMasterPassword(
+          currentPassword: pw, newPassword: pw, newSecretKey: fresh);
+      if (!ok || !context.mounted) return;
+      key = fresh;
+    }
+    final shown = key;
+    await showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Your Secret Key'),
+        content: SelectableText(shown,
+            style: const TextStyle(
+                fontFamily: 'monospace',
+                fontSize: 16,
+                fontWeight: FontWeight.bold)),
+        actions: [
+          TextButton(
+              onPressed: () => Clipboard.setData(ClipboardData(text: shown)),
+              child: const Text('Copy')),
+          FilledButton(
+              onPressed: () => Navigator.of(ctx).pop(),
+              child: const Text('Done')),
+        ],
+      ),
     );
   }
 

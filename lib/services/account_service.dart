@@ -69,6 +69,7 @@ class AccountService {
   Future<LocalAccount> createAccount({
     required String name,
     required String masterPassword,
+    List<int>? secretKey,
   }) async {
     final crypto = CryptoService.instance;
 
@@ -85,7 +86,8 @@ class AccountService {
     final rand = crypto.randomBase64(6).replaceAll(RegExp(r'[^A-Za-z0-9]'), '');
     final id = '${DateTime.now().microsecondsSinceEpoch}_$rand';
     final salt = crypto.randomBytes(16);
-    final key = await crypto.deriveKey(password: masterPassword, salt: salt);
+    final key = await crypto.deriveKey(
+        password: masterPassword, salt: salt, secretKey: secretKey);
     final verifier = await crypto.createVerifier(key);
 
     final account = LocalAccount(
@@ -99,6 +101,7 @@ class AccountService {
       verifierCipher: verifier.cipher,
       verifierMac: verifier.mac,
       createdAt: DateTime.now(),
+      secretKeyRequired: secretKey != null,
     );
 
     final all = await listAccounts();

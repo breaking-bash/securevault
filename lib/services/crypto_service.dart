@@ -67,6 +67,7 @@ class CryptoService {
     int memoryKiB = kdfMemoryKiB,
     int iterations = kdfIterations,
     int parallelism = kdfParallelism,
+    List<int>? secretKey,
   }) async {
     final argon2 = Argon2id(
       memory: memoryKiB,
@@ -74,9 +75,16 @@ class CryptoService {
       iterations: iterations,
       hashLength: keyLengthBytes,
     );
-    return argon2.deriveKey(
+    final base = await argon2.deriveKey(
       secretKey: SecretKey(utf8.encode(password)),
       nonce: salt, // Argon2 "nonce" == the salt
+    );
+    if (secretKey == null) return base;
+    // Two-secret derivation: mix the account Secret Key into the Argon2 output.
+    return Hkdf(hmac: Hmac.sha256(), outputLength: keyLengthBytes).deriveKey(
+      secretKey: base,
+      nonce: secretKey,
+      info: utf8.encode('securevault.2skd.v1'),
     );
   }
 
