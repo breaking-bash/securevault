@@ -329,6 +329,115 @@ impl Account {
     }
 }
 
+/// Lifecycle state of the on-disk account.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SessionStatus {
+    /// No account exists in the directory.
+    NoAccount,
+    /// An account exists but key material is not in memory.
+    Locked,
+    /// Account is unlocked.
+    Unlocked,
+}
+
+/// Long-lived handle for a UI process: owns the optional unlocked account and
+/// uses the default vault. Locking drops the account so keys are zeroized.
+#[derive(Debug)]
+pub struct Session {
+    dir: PathBuf,
+    account: Option<Account>,
+}
+
+impl Session {
+    /// Creates a session over `dir` (not touched until used).
+    pub fn new(dir: impl Into<PathBuf>) -> Self {
+        Self {
+            dir: dir.into(),
+            account: None,
+        }
+    }
+
+    /// Current status.
+    pub fn status(&self) -> SessionStatus {
+        if self.account.as_ref().is_some_and(|a| !a.is_locked()) {
+            SessionStatus::Unlocked
+        } else if self.dir.join(ENVELOPE_FILE).exists() {
+            SessionStatus::Locked
+        } else {
+            SessionStatus::NoAccount
+        }
+    }
+
+    /// Creates the account and leaves it unlocked. Returns the Secret Key,
+    /// which the UI must show once and never persist.
+    pub fn create(&mut self, password: &str) -> Result<String, FfiError> {
+        self.create_with(password, Argon2idParams::recommended())
+    }
+
+    fn create_with(&mut self, password: &str, params: Argon2idParams) -> Result<String, FfiError> {
+        let created = create_account_with(&self.dir, password, params)?;
+        self.account = Some(created.account);
+        Ok(created.secret_key)
+    }
+
+    /// Unlocks with password and Secret Key. A failed attempt leaves the
+    /// session locked.
+    pub fn unlock(&mut self, password: &str, secret_key: &str) -> Result<(), FfiError> {
+        self.account = None;
+        let acc = open_account(
+            self.dir.display().to_string(),
+            password.to_string(),
+            secret_key.to_string(),
+        )?;
+        self.account = Some(acc);
+        Ok(())
+    }
+
+    /// Drops the account, wiping key material.
+    pub fn lock(&mut self) {
+        self.account = None;
+    }
+
+    fn acc(&self) -> Result<&Account, FfiError> {
+        self.account.as_ref().ok_or(FfiError::Locked)
+    }
+
+    fn acc_mut(&mut self) -> Result<&mut Account, FfiError> {
+        self.account.as_mut().ok_or(FfiError::Locked)
+    }
+
+    /// Lists item IDs in the default vault.
+    pub fn list_items(&self) -> Result<Vec<String>, FfiError> {
+        self.acc()?.list_items(DEFAULT_VAULT.to_string())
+    }
+
+    /// Reads an item from the default vault.
+    pub fn get_item(&self, id: &str) -> Result<Vec<u8>, FfiError> {
+        self.acc()?
+            .get_item(DEFAULT_VAULT.to_string(), id.to_string())
+    }
+
+    /// Saves an item; generates a random ID when `id` is `None`.
+    pub fn save_item(&mut self, id: Option<&str>, payload: &[u8]) -> Result<String, FfiError> {
+        let id = match id {
+            Some(existing) => existing.to_string(),
+            None => {
+                let mut raw = [0u8; 16];
+                OsRandom.fill(&mut raw)?;
+                raw.iter().map(|b| format!("{b:02x}")).collect()
+            }
+        };
+        self.acc_mut()?
+            .put_item(DEFAULT_VAULT.to_string(), id.clone(), payload.to_vec())?;
+        Ok(id)
+    }
+
+    /// Deletes an item from the default vault.
+    pub fn delete_item(&mut self, id: &str) -> Result<(), FfiError> {
+        self.acc_mut()?
+            .delete_item(DEFAULT_VAULT.to_string(), id.to_string())
+    }
+}
 /// Generates a random password (OS CSPRNG).
 pub fn generate_password(
     length: u32,
@@ -486,5 +595,34 @@ mod tests {
     fn password_generation_validates_input() {
         assert_eq!(generate_password(24, true, false).unwrap().len(), 24);
         assert!(generate_password(2, true, false).is_err());
+    }
+
+    #[test]
+    fn session_lifecycle() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut sess = Session::new(dir.path());
+        assert_eq!(sess.status(), SessionStatus::NoAccount);
+        assert_eq!(sess.list_items(), Err(FfiError::Locked));
+        let sk = sess.create_with("pw", Argon2idParams::minimum()).unwrap();
+        assert_eq!(sess.status(), SessionStatus::Unlocked);
+        let id = sess.save_item(None, b"payload").unwrap();
+        assert_eq!(id.len(), 32);
+        assert_eq!(sess.get_item(&id).unwrap(), b"payload");
+        sess.save_item(Some(&id), b"updated").unwrap();
+        assert_eq!(sess.get_item(&id).unwrap(), b"updated");
+
+        sess.lock();
+        assert_eq!(sess.status(), SessionStatus::Locked);
+        assert_eq!(sess.get_item(&id), Err(FfiError::Locked));
+        assert_eq!(sess.unlock("bad", &sk), Err(FfiError::WrongCredentials));
+        assert_eq!(sess.status(), SessionStatus::Locked);
+        sess.unlock("pw", &sk).unwrap();
+        assert_eq!(sess.list_items().unwrap(), vec![id.clone()]);
+        sess.delete_item(&id).unwrap();
+        assert!(sess.list_items().unwrap().is_empty());
+        assert_eq!(
+            sess.create_with("pw", Argon2idParams::minimum()),
+            Err(FfiError::AlreadyExists)
+        );
     }
 }

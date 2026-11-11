@@ -1,6 +1,6 @@
 [package]
 name = "securevault-desktop"
-description = "SecureVault desktop shell (Phase 1 scaffold)"
+description = "SecureVault desktop shell (wired to the Rust core)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -16,6 +16,7 @@ tauri-build = { version = "2", features = [] }
 [dependencies]
 tauri = { version = "2", features = [] }
 serde.workspace = true
+mobile-ffi = { path = "../../../crates/mobile-ffi" }
 
 [lints.rust]
 unsafe_code = "forbid"
