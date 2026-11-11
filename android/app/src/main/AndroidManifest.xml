@@ -4,6 +4,8 @@
     <!-- Camera: used only for scanning TOTP (otpauth://) QR codes -->
     <uses-permission android:name="android.permission.CAMERA"/>
     <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <!-- Network: used only by Watchtower's opt-in breach check (k-anonymity) -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <application
         android:label="SecureVault"
         android:name="${applicationName}"

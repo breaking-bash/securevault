@@ -10,8 +10,9 @@ import 'entry_detail_screen.dart';
 import 'group_list_screen.dart';
 import 'note_edit_screen.dart';
 import 'settings_screen.dart';
+import 'watchtower_screen.dart';
 
-/// App shell: a 3-tab bottom navigation (Vault · Generator · Settings).
+/// App shell: a 4-tab bottom navigation (Vault · Generator · Watchtower · Settings).
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
 
@@ -30,6 +31,7 @@ class _HomeScreenState extends State<HomeScreen> {
         children: const [
           _VaultTab(),
           _GeneratorTab(),
+          WatchtowerScreen(),
           SettingsScreen(),
         ],
       ),
@@ -45,6 +47,10 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.autorenew_outlined),
               selectedIcon: Icon(Icons.autorenew),
               label: 'Generator'),
+          NavigationDestination(
+              icon: Icon(Icons.shield_outlined),
+              selectedIcon: Icon(Icons.shield),
+              label: 'Watchtower'),
           NavigationDestination(
               icon: Icon(Icons.settings_outlined),
               selectedIcon: Icon(Icons.settings),
