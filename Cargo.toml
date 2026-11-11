@@ -1,0 +1,26 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/shared-types",
+    "crates/crypto-engine",
+    "crates/key-manager",
+    "crates/vault-engine",
+    "apps/desktop/src-tauri",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "UNLICENSED"
+publish = false
+
+[workspace.dependencies]
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+shared-types = { path = "crates/shared-types" }
+crypto-engine = { path = "crates/crypto-engine" }
+key-manager = { path = "crates/key-manager" }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+missing_docs = "warn"

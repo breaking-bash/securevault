@@ -318,3 +318,26 @@ securevault/
 - **Argon2id cost** is tuned for responsiveness across phones and desktops. You can raise `kdfMemoryKiB` / `kdfIterations` in `lib/services/crypto_service.dart` for a higher security margin (existing vaults keep their stored parameters; new/changed passwords use the new cost).
 - **Debug-signed APK** is for direct install/testing. Use your own release keystore before any store distribution.
 ```
+
+
+## Monorepo scaffold (Phase 1, not production-ready)
+
+A Rust/Tauri/React/Go monorepo lives alongside the Flutter app. **No encryption is implemented; do not store real secrets.** See `docs/architecture/README.md` and `docs/security/threat-model.md`.
+
+Desktop (needs Rust, Node 22+, WebView2, MSVC Build Tools):
+
+    cd apps/desktop
+    npm install
+    npm run tauri dev
+
+Backend (needs Go 1.24+):
+
+    cd backend
+    go run ./cmd/api          # http://127.0.0.1:8080/healthz
+
+Database (optional; needs Docker and golang-migrate):
+
+    docker compose -f infrastructure/docker/docker-compose.dev.yml up -d
+    migrate -path backend/migrations -database "postgres://securevault:dev-only-change-me@127.0.0.1:5432/securevault?sslmode=disable" up
+
+Tests: `cargo test --workspace`, `cd apps/desktop; npm test`, `cd backend; go test ./...`.

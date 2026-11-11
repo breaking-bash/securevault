@@ -49,3 +49,11 @@ app.*.map.json
 /dist/*.aab
 /dist/*.exe
 /dist/*.zip
+
+# Monorepo (Rust / Node / Go)
+/target/
+node_modules/
+/apps/desktop/dist/
+/apps/desktop/src-tauri/gen/
+*.test
+coverage/

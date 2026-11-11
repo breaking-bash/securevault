@@ -1,0 +1,15 @@
+[package]
+name = "key-manager"
+description = "Key manager INTERFACE ONLY. No key handling implementation yet."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+shared-types.workspace = true
+crypto-engine.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

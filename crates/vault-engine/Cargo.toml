@@ -1,0 +1,15 @@
+[package]
+name = "vault-engine"
+description = "Vault engine INTERFACE ONLY. No vault implementation yet."
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+shared-types.workspace = true
+key-manager.workspace = true
+thiserror.workspace = true
+
+[lints]
+workspace = true

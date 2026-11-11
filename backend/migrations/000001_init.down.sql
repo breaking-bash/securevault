@@ -1,0 +1,13 @@
+DROP TABLE IF EXISTS audit_events;
+DROP TABLE IF EXISTS sessions;
+DROP TABLE IF EXISTS attachments;
+DROP TABLE IF EXISTS sync_operations;
+DROP TABLE IF EXISTS vault_key_envelopes;
+DROP TABLE IF EXISTS encrypted_items;
+DROP TABLE IF EXISTS vault_members;
+DROP TABLE IF EXISTS vaults;
+DROP TABLE IF EXISTS organization_members;
+DROP TABLE IF EXISTS organizations;
+DROP TABLE IF EXISTS devices;
+DROP TABLE IF EXISTS auth_credentials;
+DROP TABLE IF EXISTS users;

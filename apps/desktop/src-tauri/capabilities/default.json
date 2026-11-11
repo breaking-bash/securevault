@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Minimal capability: the main window may invoke app commands only. No fs, shell or process plugins are enabled.",
+  "windows": ["main"],
+  "permissions": []
+}
