@@ -14,14 +14,33 @@ class GateScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<VaultState>();
 
-    if (state.unlocked) {
-      return const HomeScreen();
-    }
-    if (!state.hasAccounts) {
+    final String key;
+    final Widget screen;
+    if (state.unlocked && !state.unlockAnimating) {
+      key = 'home';
+      screen = const HomeScreen();
+    } else if (!state.hasAccounts) {
       // No accounts on this device yet -> first-run welcome / create flow.
-      return const WelcomeScreen();
+      key = 'welcome';
+      screen = const WelcomeScreen();
+    } else {
+      // Accounts exist -> show account picker + unlock.
+      key = 'unlock';
+      screen = const UnlockScreen();
     }
-    // Accounts exist -> show account picker + unlock.
-    return const UnlockScreen();
+
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 450),
+      switchInCurve: Curves.easeOutCubic,
+      switchOutCurve: Curves.easeIn,
+      transitionBuilder: (child, anim) => FadeTransition(
+        opacity: anim,
+        child: ScaleTransition(
+          scale: Tween<double>(begin: 0.96, end: 1).animate(anim),
+          child: child,
+        ),
+      ),
+      child: KeyedSubtree(key: ValueKey(key), child: screen),
+    );
   }
 }

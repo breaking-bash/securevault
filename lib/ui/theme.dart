@@ -1,10 +1,18 @@
 import 'package:flutter/material.dart';
 
-const _seed = Color(0xFF2E6CF6);
+const _seed = Color(0xFF0572EC);
 
 ThemeData _base(Brightness brightness) {
-  final scheme = ColorScheme.fromSeed(seedColor: _seed, brightness: brightness);
   final isLight = brightness == Brightness.light;
+  final scheme = ColorScheme.fromSeed(
+    seedColor: _seed,
+    brightness: brightness,
+  ).copyWith(
+    primary: isLight ? const Color(0xFF0572EC) : const Color(0xFF4C9AFF),
+    surface: isLight ? const Color(0xFFF4F6FA) : const Color(0xFF0E1726),
+    surfaceContainerHighest:
+        isLight ? const Color(0xFFFFFFFF) : const Color(0xFF1A2740),
+  );
   return ThemeData(
     useMaterial3: true,
     colorScheme: scheme,
@@ -50,13 +58,15 @@ ThemeData _base(Brightness brightness) {
     floatingActionButtonTheme: FloatingActionButtonThemeData(
       backgroundColor: scheme.primary,
       foregroundColor: scheme.onPrimary,
-      shape: const CircleBorder(),
+      extendedTextStyle:
+          const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+      shape: const StadiumBorder(),
     ),
     // Cards are reserved for a few callout surfaces; keep them flat & subtle.
     cardTheme: CardThemeData(
       elevation: 0,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-      color: scheme.surfaceContainerHighest.withValues(alpha: 0.4),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      color: scheme.surfaceContainerHighest,
     ),
   );
 }

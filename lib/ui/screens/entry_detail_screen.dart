@@ -1,10 +1,14 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/item_templates.dart';
 import '../../models/vault_entry.dart';
 import '../../state/vault_state.dart';
 import '../widgets/totp_code_tile.dart';
 import 'entry_edit_screen.dart';
+
+const _dot = '\u2022';
 
 class EntryDetailScreen extends StatefulWidget {
   final String entryId;
@@ -15,67 +19,80 @@ class EntryDetailScreen extends StatefulWidget {
 }
 
 class _EntryDetailScreenState extends State<EntryDetailScreen> {
-  bool _showPassword = false;
-  bool _showSecret = false;
+  final Set<String> _revealed = {};
 
-  Widget _extraRow(VaultEntry e, String key, String label, IconData icon,
-      {bool secret = false, bool mono = false}) {
-    final v = e.extra[key] ?? '';
-    if (v.isEmpty) return const SizedBox.shrink();
-    final hidden = secret && !_showSecret;
+  void _toggle(String k) => setState(
+      () => _revealed.contains(k) ? _revealed.remove(k) : _revealed.add(k));
+
+  Widget _row(String id, String label, String value, FieldKind kind,
+      {bool masked = false, bool mono = false}) {
+    if (value.isEmpty) return const SizedBox.shrink();
+    final hidden = masked && !_revealed.contains(id);
+    final isOtp = kind == FieldKind.otp;
+    if (isOtp) {
+      return TotpCodeTile(
+        stored: value,
+        onCopy: (code) => _copy(context, code, 'Code', sensitive: true),
+      );
+    }
     return _FieldRow(
       label: label,
-      value: hidden ? '•' * v.length.clamp(0, 24) : v,
-      icon: icon,
+      value: hidden ? _dot * value.length.clamp(0, 24) : value,
+      icon: kind.icon,
       monospace: mono && !hidden,
-      trailing: secret
+      trailing: masked
           ? IconButton(
-              icon: Icon(_showSecret ? Icons.visibility_off : Icons.visibility),
-              onPressed: () => setState(() => _showSecret = !_showSecret),
+              icon: Icon(hidden ? Icons.visibility : Icons.visibility_off),
+              onPressed: () => _toggle(id),
             )
           : null,
-      onCopy: () => _copy(context, v, label, sensitive: secret),
+      onCopy: () => _copy(context, value, label, sensitive: masked),
     );
   }
 
-  List<Widget> _typeRows(VaultEntry e) {
-    switch (e.type) {
-      case EntryType.card:
-        return [
-          _extraRow(
-              e, EntryFields.cardholder, 'Cardholder', Icons.person_outline),
-          _extraRow(e, EntryFields.cardNumber, 'Card number', Icons.credit_card,
-              secret: true),
-          _extraRow(e, EntryFields.expiry, 'Expiry', Icons.event_outlined),
-          _extraRow(e, EntryFields.cvv, 'Security code', Icons.password,
-              secret: true),
-          _extraRow(e, EntryFields.pin, 'PIN', Icons.pin_outlined,
-              secret: true),
-        ];
-      case EntryType.ssh:
-        return [
-          _extraRow(e, EntryFields.publicKey, 'Public key', Icons.key,
-              mono: true),
-          _extraRow(
-              e, EntryFields.fingerprint, 'Fingerprint', Icons.fingerprint),
-          _extraRow(
-              e, EntryFields.privateKey, 'Private key', Icons.lock_outline,
-              secret: true, mono: true),
-          _extraRow(e, EntryFields.passphrase, 'Passphrase', Icons.password,
-              secret: true),
-        ];
-      case EntryType.passkey:
-        return [
-          _extraRow(e, EntryFields.rpId, 'Website', Icons.language),
-          _extraRow(e, EntryFields.passkeyUser, 'User', Icons.person_outline),
-          _extraRow(e, EntryFields.credentialId, 'Credential ID', Icons.badge_outlined,
-              mono: true),
-          _extraRow(e, EntryFields.privateKey, 'Private key', Icons.lock_outline,
-              secret: true, mono: true),
-        ];
-      case EntryType.login:
-        return const [];
+  Future<void> _download(Attachment a) async {
+    try {
+      final path = await FilePicker.saveFile(fileName: a.name, bytes: a.bytes);
+      if (path != null && mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Saved ${a.name}')));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('Could not save file: $e')));
+      }
     }
+  }
+
+  static String _size(int b) => b < 1024
+      ? '$b B'
+      : b < 1024 * 1024
+          ? '${(b / 1024).toStringAsFixed(1)} KB'
+          : '${(b / 1024 / 1024).toStringAsFixed(1)} MB';
+
+  Widget _section(List<Widget> rows, {String? header}) {
+    final visible = rows.where((w) => w is! SizedBox).toList();
+    if (visible.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Card(
+        margin: EdgeInsets.zero,
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (header != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Text(header.toUpperCase(),
+                    style: Theme.of(context).textTheme.labelMedium),
+              ),
+            ...visible,
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -83,25 +100,53 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     final state = context.watch<VaultState>();
     final match = state.entries.where((e) => e.id == widget.entryId);
     if (match.isEmpty) {
-      // Entry was deleted (or vault locked) — pop back.
+      // Entry was deleted (or vault locked) - pop back.
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) Navigator.of(context).maybePop();
       });
       return const Scaffold(body: SizedBox.shrink());
     }
     final e = match.first;
+    final tpl = ItemTemplates.of(e.type);
     final scheme = Theme.of(context).colorScheme;
+    final signIn = e.extra[ItemTemplates.signInKey] ?? '';
+
+    final main = <Widget>[
+      if (e.type == EntryType.login) ...[
+        _row('_user', 'Username / email', e.username, FieldKind.email),
+        _row('_pw', 'Password', e.password, FieldKind.password,
+            masked: true, mono: true),
+        _row('_url', 'Website', e.url, FieldKind.url),
+        _row('_signin', 'Sign in with', signIn, FieldKind.text),
+        if ((e.totp ?? '').isNotEmpty)
+          _row('_totp', 'One-time password', e.totp!, FieldKind.otp),
+      ] else
+        for (final f in tpl.fields)
+          _row(f.key, f.label, e.extra[f.key] ?? '', f.kind,
+              masked: f.masked, mono: f.mono),
+    ];
+
+    final custom = [
+      for (var i = 0; i < e.customFields.length; i++)
+        _row('c$i', e.customFields[i].label.isEmpty
+                ? e.customFields[i].kind.label
+                : e.customFields[i].label,
+            e.customFields[i].value, e.customFields[i].kind,
+            masked: e.customFields[i].kind.isSecretByDefault),
+    ];
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(e.title.isEmpty ? '(untitled)' : e.title),
+        title: const Text(''),
         actions: [
           IconButton(
+            tooltip: 'Edit',
             icon: const Icon(Icons.edit_outlined),
             onPressed: () => Navigator.of(context).push(MaterialPageRoute(
                 builder: (_) => EntryEditScreen(entryId: e.id))),
           ),
           IconButton(
+            tooltip: 'Delete',
             icon: const Icon(Icons.delete_outline),
             onPressed: () async {
               final ok = await _confirmDelete(context);
@@ -115,70 +160,83 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       ),
       body: ListView(
         children: [
-          const SizedBox(height: 8),
-          ..._typeRows(e),
-          if (e.type == EntryType.login) ...[
-            _FieldRow(
-              label: 'Username / email',
-              value: e.username,
-              icon: Icons.person_outline,
-              onCopy: e.username.isEmpty
-                  ? null
-                  : () => _copy(context, e.username, 'Username'),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: tpl.color,
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(tpl.icon, color: Colors.white, size: 30),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(e.title.isEmpty ? '(untitled)' : e.title,
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineSmall
+                              ?.copyWith(fontWeight: FontWeight.w700)),
+                      Text(tpl.label,
+                          style: TextStyle(color: scheme.onSurfaceVariant)),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            _FieldRow(
-              label: 'Password',
-              value: e.password.isEmpty
-                  ? ''
-                  : (_showPassword
-                      ? e.password
-                      : '•' * e.password.length.clamp(0, 24)),
-              icon: Icons.lock_outline,
-              monospace: _showPassword,
-              trailing: e.password.isEmpty
-                  ? null
-                  : IconButton(
-                      icon: Icon(_showPassword
-                          ? Icons.visibility_off
-                          : Icons.visibility),
-                      onPressed: () =>
-                          setState(() => _showPassword = !_showPassword),
-                    ),
-              onCopy: e.password.isEmpty
-                  ? null
-                  : () =>
-                      _copy(context, e.password, 'Password', sensitive: true),
-            ),
-            _FieldRow(
-              label: 'URL',
-              value: e.url,
-              icon: Icons.link,
-              onCopy: e.url.isEmpty ? null : () => _copy(context, e.url, 'URL'),
-            ),
-            if ((e.totp ?? '').isNotEmpty) ...[
-              const Divider(indent: 16, endIndent: 16),
-              TotpCodeTile(
-                stored: e.totp!,
-                onCopy: (code) => _copy(context, code, 'Code', sensitive: true),
-              ),
-            ],
-          ],
-          _FieldRow(
-            label: 'Folder',
-            value: state.folderName(e.folderId),
-            icon: Icons.folder_outlined,
           ),
+          _section(main),
+          _section(custom, header: 'More fields'),
           if (e.notes.isNotEmpty)
-            _FieldRow(
-              label: 'Notes',
-              value: e.notes,
-              icon: Icons.notes,
+            _section([
+              _FieldRow(label: 'Notes', value: e.notes, icon: Icons.notes),
+            ]),
+          if (e.attachments.isNotEmpty)
+            _section([
+              for (final a in e.attachments)
+                ListTile(
+                  leading: const Icon(Icons.attach_file),
+                  title: Text(a.name, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(_size(a.size)),
+                  trailing: IconButton(
+                    tooltip: 'Save to device',
+                    icon: const Icon(Icons.download_outlined),
+                    onPressed: () => _download(a),
+                  ),
+                ),
+            ], header: 'Attachments'),
+          if (e.tags.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+              child: Wrap(
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  for (final t in e.tags)
+                    Chip(
+                      avatar: const Icon(Icons.sell_outlined, size: 16),
+                      label: Text(t),
+                    ),
+                ],
+              ),
             ),
-          const SizedBox(height: 16),
+          _section([
+            _FieldRow(
+              label: 'Folder',
+              value: e.folderId == null ? '' : state.folderName(e.folderId),
+              icon: Icons.folder_outlined,
+            ),
+          ]),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Text(
-              'Updated ${_fmt(e.updatedAt)} · Created ${_fmt(e.createdAt)}',
+              'Updated ${_fmt(e.updatedAt)} \u00b7 Created ${_fmt(e.createdAt)}',
               style: Theme.of(context)
                   .textTheme
                   .bodySmall
@@ -198,7 +256,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
     final secs = state.clipboardClearSeconds;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(
       content: Text(sensitive && secs > 0
-          ? '$label copied — clears in ${secs}s'
+          ? '$label copied \u2014 clears in ${secs}s'
           : '$label copied'),
     ));
   }
@@ -224,8 +282,7 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
       '${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
 }
 
-/// A single detail row: leading outline icon, label + value, optional actions,
-/// separated from neighbours by a thin full-width divider (minimalist style).
+/// A single detail row: leading icon, label + value, optional actions.
 class _FieldRow extends StatelessWidget {
   final String label;
   final String value;
@@ -245,46 +302,39 @@ class _FieldRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (value.isEmpty && onCopy == null && trailing == null) {
-      return const SizedBox.shrink();
-    }
+    if (value.isEmpty) return const SizedBox.shrink();
     final scheme = Theme.of(context).colorScheme;
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
-          child: Row(
-            children: [
-              Icon(icon, size: 22, color: scheme.onSurfaceVariant),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(label,
-                        style: Theme.of(context)
-                            .textTheme
-                            .labelMedium
-                            ?.copyWith(color: scheme.onSurfaceVariant)),
-                    const SizedBox(height: 2),
-                    SelectableText(
-                      value.isEmpty ? '—' : value,
-                      style: TextStyle(
-                        fontFamily: monospace ? 'monospace' : null,
-                        fontSize: 15,
-                      ),
-                    ),
-                  ],
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+      child: Row(
+        children: [
+          Icon(icon, size: 22, color: scheme.onSurfaceVariant),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label,
+                    style: Theme.of(context)
+                        .textTheme
+                        .labelMedium
+                        ?.copyWith(color: scheme.onSurfaceVariant)),
+                const SizedBox(height: 2),
+                SelectableText(
+                  value,
+                  style: TextStyle(
+                    fontFamily: monospace ? 'monospace' : null,
+                    fontSize: 15,
+                  ),
                 ),
-              ),
-              if (trailing != null) trailing!,
-              if (onCopy != null)
-                IconButton(icon: const Icon(Icons.copy), onPressed: onCopy),
-            ],
+              ],
+            ),
           ),
-        ),
-        const Divider(indent: 16, endIndent: 16),
-      ],
+          if (trailing != null) trailing!,
+          if (onCopy != null)
+            IconButton(icon: const Icon(Icons.copy), onPressed: onCopy),
+        ],
+      ),
     );
   }
 }

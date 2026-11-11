@@ -33,6 +33,8 @@ Everything is stored **only on your device** — there is no server, no cloud, n
 - **Credit cards** — cardholder, number, expiry, CVV and PIN.
 - **SSH keys** — generate Ed25519 key pairs (OpenSSH format) or paste your own.
 - **Passkeys** — vault-stored passkey items (website, user, credential ID, private key). These are stored records only; SecureVault is not yet a system passkey provider.
+- **1Password-style UI** — "New Item" button with a category grid (Login, Credit Card, Identity, Bank Account, Wi-Fi, Passkey, SSH Key, Server, Database, API Credential, License, Driver License, Passport, Email Account, Secure Note), coloured category icons, and an animated padlock on the unlock screen (closes on launch, shakes on a wrong password, opens on success; also for fingerprint unlock).
+- **Rich fields** — every item can have extra fields (text, URL, email, date, one-time password, password, phone), a "Sign in with" provider on logins, tags, and encrypted file attachments (up to 5 MB each).
 - **Watchtower** — flags weak, reused, old, HTTP and missing-2FA logins, and checks breaches via Have I Been Pwned (k-anonymity: only a 5-character SHA-1 prefix is sent).
 - **Secret Key** — a per-account 128-bit key (SV1-XXXXXX-...) mixed with the master password (Argon2id + HKDF), required on new devices. Existing accounts can enable it in Settings.
 - **Link another device** — QR-code pairing over the local network; the vault is sent encrypted (X25519 + AES-256-GCM), and the master password and Secret Key are never transmitted.

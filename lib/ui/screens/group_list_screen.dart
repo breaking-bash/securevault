@@ -1,26 +1,32 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/item_templates.dart';
 import '../../models/secure_note.dart';
 import '../../models/vault_entry.dart';
 import '../../state/vault_state.dart';
+import '../widgets/type_tile.dart';
 import 'entry_detail_screen.dart';
 import 'note_edit_screen.dart';
 
-enum GroupFilter { logins, notes, folder }
+enum GroupFilter { type, notes, folder, tag }
 
-/// A filtered list of vault items (a type group or a folder), shown as simple
-/// divider-separated rows — the drill-down from the grouped vault overview.
+/// A filtered list of vault items (a category, folder or tag), shown as simple
+/// divider-separated rows - the drill-down from the grouped vault overview.
 class GroupListScreen extends StatelessWidget {
   final String title;
   final GroupFilter filter;
   final String? folderId;
+  final EntryType? entryType;
+  final String? tag;
 
   const GroupListScreen({
     super.key,
     required this.title,
     required this.filter,
     this.folderId,
+    this.entryType,
+    this.tag,
   });
 
   @override
@@ -30,8 +36,8 @@ class GroupListScreen extends StatelessWidget {
     List<VaultEntry> entries;
     List<SecureNote> notes;
     switch (filter) {
-      case GroupFilter.logins:
-        entries = state.entries;
+      case GroupFilter.type:
+        entries = state.entries.where((e) => e.type == entryType).toList();
         notes = const [];
         break;
       case GroupFilter.notes:
@@ -42,10 +48,13 @@ class GroupListScreen extends StatelessWidget {
         entries = state.entries.where((e) => e.folderId == folderId).toList();
         notes = state.notes.where((n) => n.folderId == folderId).toList();
         break;
+      case GroupFilter.tag:
+        entries = state.entries.where((e) => e.tags.contains(tag)).toList();
+        notes = const [];
+        break;
     }
 
     final empty = entries.isEmpty && notes.isEmpty;
-    final scheme = Theme.of(context).colorScheme;
 
     return Scaffold(
       appBar: AppBar(title: Text(title)),
@@ -67,19 +76,19 @@ class GroupListScreen extends StatelessWidget {
               children: [
                 for (final e in entries)
                   _Row(
-                    icon: Icons.language_outlined,
+                    icon: ItemTemplates.of(e.type).icon,
+                    color: ItemTemplates.of(e.type).color,
                     title: e.title.isEmpty ? '(untitled)' : e.title,
-                    subtitle: e.username,
-                    color: scheme.onSurfaceVariant,
+                    subtitle: e.subtitle,
                     onTap: () => Navigator.of(context).push(MaterialPageRoute(
                         builder: (_) => EntryDetailScreen(entryId: e.id))),
                   ),
                 for (final n in notes)
                   _Row(
                     icon: Icons.sticky_note_2_outlined,
+                    color: ItemTemplates.noteColor,
                     title: n.title.isEmpty ? '(untitled)' : n.title,
                     subtitle: n.body.replaceAll('\n', ' '),
-                    color: scheme.onSurfaceVariant,
                     onTap: () => Navigator.of(context).push(MaterialPageRoute(
                         builder: (_) => NoteEditScreen(noteId: n.id))),
                   ),
@@ -109,7 +118,7 @@ class _Row extends StatelessWidget {
     return Column(
       children: [
         ListTile(
-          leading: Icon(icon, color: color),
+          leading: TypeTile(icon: icon, color: color),
           title: Text(title),
           subtitle: subtitle.isEmpty
               ? null
@@ -117,7 +126,7 @@ class _Row extends StatelessWidget {
           trailing: const Icon(Icons.chevron_right),
           onTap: onTap,
         ),
-        const Divider(height: 0, indent: 16, endIndent: 16),
+        const Divider(height: 0, indent: 72, endIndent: 16),
       ],
     );
   }

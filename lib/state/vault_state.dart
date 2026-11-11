@@ -52,6 +52,22 @@ class VaultState extends ChangeNotifier {
 
   LocalAccount? get account => _account;
   bool get unlocked => _unlocked;
+
+  // True while the unlock screen plays its 'lock opens' animation after a
+  // successful unlock; the gate keeps showing it until [finishUnlockAnimation].
+  bool _unlockAnimating = false;
+  bool get unlockAnimating => _unlockAnimating;
+  void finishUnlockAnimation() {
+    if (!_unlockAnimating) return;
+    _unlockAnimating = false;
+    notifyListeners();
+  }
+
+  /// All distinct tags across items, sorted.
+  List<String> get allTags {
+    final s = <String>{for (final e in entries) ...e.tags};
+    return s.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+  }
   bool get hasAccounts => accountsList.isNotEmpty;
 
   // ---- decrypted data (only while unlocked) ----
@@ -97,6 +113,7 @@ class VaultState extends ChangeNotifier {
     required LocalAccount account,
     required String masterPassword,
     String? secretKey,
+    bool animate = false,
   }) async {
     final sk = SecretKeyService.instance;
     String? secretText;
@@ -121,6 +138,7 @@ class VaultState extends ChangeNotifier {
     _account = account;
     _key = key;
     _unlocked = true;
+    _unlockAnimating = animate;
     _sessionMasterPassword = masterPassword;
     _sessionSecretKey = secretText;
     if (secretText != null) await sk.save(account.id, secretText);
@@ -137,6 +155,7 @@ class VaultState extends ChangeNotifier {
     _clipboardTimer?.cancel();
     _key = null;
     _unlocked = false;
+    _unlockAnimating = false;
     _sessionMasterPassword = null;
     _sessionSecretKey = null;
     entries.clear();
@@ -468,13 +487,14 @@ class VaultState extends ChangeNotifier {
 
   /// Attempt a biometric unlock for [account]: prompt for biometrics, retrieve
   /// the stored master password, then unlock normally. Returns true on success.
-  Future<bool> unlockWithBiometrics(LocalAccount account) async {
+  Future<bool> unlockWithBiometrics(LocalAccount account,
+      {bool animate = false}) async {
     final pw = await BiometricService.instance.retrieveSecret(
       account.id,
       reason: 'Unlock ${account.name}',
     );
     if (pw == null) return false;
-    return unlock(account: account, masterPassword: pw);
+    return unlock(account: account, masterPassword: pw, animate: animate);
   }
 
   // ---------------------------------------------------------------- settings

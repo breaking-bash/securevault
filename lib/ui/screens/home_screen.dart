@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../../models/item_templates.dart';
 import '../../models/secure_note.dart';
 import '../../models/vault_entry.dart';
 import '../../state/vault_state.dart';
 import '../widgets/generator_sheet.dart';
+import '../widgets/type_tile.dart';
 import 'entry_edit_screen.dart';
 import 'entry_detail_screen.dart';
 import 'group_list_screen.dart';
@@ -87,7 +89,8 @@ class _VaultTabState extends State<_VaultTab> {
             e.username.toLowerCase().contains(q) ||
             e.url.toLowerCase().contains(q) ||
             e.subtitle.toLowerCase().contains(q) ||
-            e.notes.toLowerCase().contains(q))
+            e.notes.toLowerCase().contains(q) ||
+            e.tags.any((t) => t.contains(q)))
         .toList();
   }
 
@@ -104,61 +107,73 @@ class _VaultTabState extends State<_VaultTab> {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
-      builder: (_) => SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.language_outlined),
-              title: const Text('Add login'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const EntryEditScreen()));
-              },
+      isScrollControlled: true,
+      builder: (sheetCtx) {
+        final items = <(String, IconData, Color, VoidCallback)>[
+          for (final t in ItemTemplates.pickerOrder)
+            (
+              ItemTemplates.of(t).label,
+              ItemTemplates.of(t).icon,
+              ItemTemplates.of(t).color,
+              () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => EntryEditScreen(newType: t))),
             ),
-            ListTile(
-              leading: const Icon(Icons.credit_card_outlined),
-              title: const Text('Add credit card'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) =>
-                        const EntryEditScreen(newType: EntryType.card)));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.terminal_outlined),
-              title: const Text('Add SSH key'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) =>
-                        const EntryEditScreen(newType: EntryType.ssh)));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.key),
-              title: const Text('Add passkey'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) =>
-                        const EntryEditScreen(newType: EntryType.passkey)));
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.sticky_note_2_outlined),
-              title: const Text('Add secure note'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.of(context).push(
-                    MaterialPageRoute(builder: (_) => const NoteEditScreen()));
-              },
-            ),
-          ],
-        ),
-      ),
+          (
+            'Secure Note',
+            Icons.sticky_note_2_outlined,
+            ItemTemplates.noteColor,
+            () => Navigator.of(context)
+                .push(MaterialPageRoute(builder: (_) => const NoteEditScreen())),
+          ),
+        ];
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text('New Item',
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(fontWeight: FontWeight.w700)),
+                ),
+              ),
+              Flexible(
+                child: GridView.count(
+                  shrinkWrap: true,
+                  crossAxisCount: 3,
+                  padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
+                  childAspectRatio: 1.05,
+                  children: [
+                    for (final it in items)
+                      InkWell(
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () {
+                          Navigator.pop(sheetCtx);
+                          it.$4();
+                        },
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            TypeTile(icon: it.$2, color: it.$3, size: 52),
+                            const SizedBox(height: 8),
+                            Text(it.$1,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                style: const TextStyle(fontSize: 13)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -168,9 +183,10 @@ class _VaultTabState extends State<_VaultTab> {
     final searching = _query.trim().isNotEmpty;
 
     return Scaffold(
-      floatingActionButton: FloatingActionButton(
+      floatingActionButton: FloatingActionButton.extended(
         onPressed: () => _add(context),
-        child: const Icon(Icons.add),
+        icon: const Icon(Icons.add),
+        label: const Text('New Item'),
       ),
       body: CustomScrollView(
         slivers: [
@@ -178,9 +194,9 @@ class _VaultTabState extends State<_VaultTab> {
             title: Text(state.account?.name ?? 'Vault'),
             actions: [
               IconButton(
-                tooltip: 'Add item',
-                icon: const Icon(Icons.add),
-                onPressed: () => _add(context),
+                tooltip: 'More',
+                icon: const Icon(Icons.more_horiz),
+                onPressed: () => _showOverflow(context, state),
               ),
             ],
           ),
@@ -285,31 +301,67 @@ class _VaultTabState extends State<_VaultTab> {
         state.entries.where((e) => e.folderId == null).toList();
     final noFolderNotes = state.notes.where((n) => n.folderId == null).toList();
     final noFolderCount = noFolderEntries.length + noFolderNotes.length;
+    final typeCount = ItemTemplates.pickerOrder
+            .where((t) => state.entries.any((e) => e.type == t))
+            .length +
+        (state.notes.isEmpty ? 0 : 1);
 
     return [
-      const _SectionHeader('TYPES', 2),
-      SliverToBoxAdapter(
-        child: _VaultRow(
-          icon: Icons.language_outlined,
-          label: 'Login',
-          count: state.entries.length,
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => const GroupListScreen(
-                title: 'Login', filter: GroupFilter.logins),
-          )),
+      if (state.allTags.isNotEmpty) ...[
+        _SectionHeader('TAGS', state.allTags.length),
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                for (final t in state.allTags)
+                  ActionChip(
+                    avatar: const Icon(Icons.sell_outlined, size: 16),
+                    label: Text(t),
+                    onPressed: () => Navigator.of(context).push(
+                        MaterialPageRoute(
+                            builder: (_) => GroupListScreen(
+                                title: '#$t',
+                                filter: GroupFilter.tag,
+                                tag: t))),
+                  ),
+              ],
+            ),
+          ),
         ),
-      ),
-      SliverToBoxAdapter(
-        child: _VaultRow(
-          icon: Icons.sticky_note_2_outlined,
-          label: 'Secure note',
-          count: state.notes.length,
-          onTap: () => Navigator.of(context).push(MaterialPageRoute(
-            builder: (_) => const GroupListScreen(
-                title: 'Secure note', filter: GroupFilter.notes),
-          )),
+      ],
+      _SectionHeader('CATEGORIES', typeCount),
+      for (final t in ItemTemplates.pickerOrder)
+        if (state.entries.any((e) => e.type == t))
+          SliverToBoxAdapter(
+            child: _VaultRow(
+              icon: ItemTemplates.of(t).icon,
+              color: ItemTemplates.of(t).color,
+              label: ItemTemplates.of(t).label,
+              count: state.entries.where((e) => e.type == t).length,
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => GroupListScreen(
+                    title: ItemTemplates.of(t).label,
+                    filter: GroupFilter.type,
+                    entryType: t),
+              )),
+            ),
+          ),
+      if (state.notes.isNotEmpty)
+        SliverToBoxAdapter(
+          child: _VaultRow(
+            icon: Icons.sticky_note_2_outlined,
+            color: ItemTemplates.noteColor,
+            label: 'Secure Note',
+            count: state.notes.length,
+            onTap: () => Navigator.of(context).push(MaterialPageRoute(
+              builder: (_) => const GroupListScreen(
+                  title: 'Secure Note', filter: GroupFilter.notes),
+            )),
+          ),
         ),
-      ),
       _SectionHeader('FOLDERS', state.folders.length),
       ...state.folders.map((f) {
         final count = state.entries.where((e) => e.folderId == f.id).length +
@@ -317,6 +369,7 @@ class _VaultTabState extends State<_VaultTab> {
         return SliverToBoxAdapter(
           child: _VaultRow(
             icon: Icons.folder_outlined,
+            color: const Color(0xFF6B7A90),
             label: f.name,
             count: count,
             onTap: () => Navigator.of(context).push(MaterialPageRoute(
@@ -331,7 +384,7 @@ class _VaultTabState extends State<_VaultTab> {
         const SliverToBoxAdapter(
           child: Padding(
             padding: EdgeInsets.fromLTRB(16, 8, 16, 8),
-            child: Text('Nothing here yet — tap + to add an item.'),
+            child: Text('Nothing here yet — tap New Item to add one.'),
           ),
         ),
       SliverList.list(children: [
@@ -356,7 +409,7 @@ class _VaultTabState extends State<_VaultTab> {
       ];
     }
     return [
-      if (entries.isNotEmpty) _SectionHeader('LOGINS', entries.length),
+      if (entries.isNotEmpty) _SectionHeader('ITEMS', entries.length),
       SliverList.list(
           children: entries.map((e) => _EntryRow(entry: e)).toList()),
       if (notes.isNotEmpty) _SectionHeader('SECURE NOTES', notes.length),
@@ -407,11 +460,13 @@ class _SectionHeader extends StatelessWidget {
 /// A group/type/folder row: leading outline icon, label, trailing count + chevron.
 class _VaultRow extends StatelessWidget {
   final IconData icon;
+  final Color color;
   final String label;
   final int count;
   final VoidCallback onTap;
   const _VaultRow({
     required this.icon,
+    required this.color,
     required this.label,
     required this.count,
     required this.onTap,
@@ -423,7 +478,7 @@ class _VaultRow extends StatelessWidget {
     return Column(
       children: [
         ListTile(
-          leading: Icon(icon, color: scheme.onSurfaceVariant),
+          leading: TypeTile(icon: icon, color: color, size: 36),
           title: Text(label),
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
@@ -449,18 +504,12 @@ class _EntryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.read<VaultState>();
-    final scheme = Theme.of(context).colorScheme;
     return Column(
       children: [
         ListTile(
-          leading: Icon(
-              switch (entry.type) {
-                EntryType.card => Icons.credit_card_outlined,
-                EntryType.ssh => Icons.terminal_outlined,
-                EntryType.passkey => Icons.key,
-                EntryType.login => Icons.language_outlined,
-              },
-              color: scheme.onSurfaceVariant),
+          leading: TypeTile(
+              icon: ItemTemplates.of(entry.type).icon,
+              color: ItemTemplates.of(entry.type).color),
           title: Text(entry.title.isEmpty ? '(untitled)' : entry.title),
           subtitle: entry.subtitle.isEmpty
               ? null
@@ -496,12 +545,12 @@ class _NoteRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     return Column(
       children: [
         ListTile(
-          leading: Icon(Icons.sticky_note_2_outlined,
-              color: scheme.onSurfaceVariant),
+          leading: const TypeTile(
+              icon: Icons.sticky_note_2_outlined,
+              color: ItemTemplates.noteColor),
           title: Text(note.title.isEmpty ? '(untitled)' : note.title),
           subtitle: note.body.isEmpty
               ? null
