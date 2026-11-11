@@ -1,9 +1,12 @@
+import 'dart:io' show Platform;
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../services/biometric_service.dart';
 import '../../services/settings_service.dart';
 import '../../state/vault_state.dart';
+import 'link_send_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -150,6 +153,14 @@ class _SettingsScreenState extends State<SettingsScreen> {
             subtitle: const Text('Re-encrypts the whole vault'),
             onTap: () => _changeMasterPassword(context),
           ),
+          if (Platform.isAndroid || Platform.isIOS)
+            ListTile(
+              leading: const Icon(Icons.qr_code_scanner),
+              title: const Text('Send vault to another device'),
+              subtitle: const Text('Scan a link code over your local network'),
+              onTap: () => Navigator.of(context).push(MaterialPageRoute(
+                  builder: (_) => const LinkSendScreen())),
+            ),
           ListTile(
             leading: const Icon(Icons.lock_outline),
             title: const Text('Lock vault now'),

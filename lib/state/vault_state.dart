@@ -207,6 +207,42 @@ class VaultState extends ChangeNotifier {
     notifyListeners();
   }
 
+  // ------------------------------------------------------------ device link
+  /// Snapshot of the encrypted vault for sending to another device. Contains
+  /// only ciphertext plus the non-secret KDF/verifier metadata.
+  Future<Map<String, dynamic>> exportForLink() async {
+    final acc = _account;
+    if (acc == null || !_unlocked) {
+      throw StateError('Unlock the vault first.');
+    }
+    return {
+      'account': acc.toJson(),
+      'folders': await _db.readFolders(),
+      'entries': await _db.readEntries(),
+      'notes': await _db.readNotes(),
+    };
+  }
+
+  /// Imports a vault received from another device. The user then unlocks it
+  /// with the original master password.
+  Future<LocalAccount> importFromLink(Map<String, dynamic> data) async {
+    List<Map<String, Object?>> rows(String k) => ((data[k] ?? const []) as List)
+        .map((e) => Map<String, Object?>.from(e as Map))
+        .toList();
+    final incoming =
+        LocalAccount.fromJson(data['account'] as Map<String, dynamic>);
+    final account = await _accounts.importAccount(incoming);
+    await _db.importRows(
+      path: await _accounts.vaultPathFor(account.id),
+      folders: rows('folders'),
+      entries: rows('entries'),
+      notes: rows('notes'),
+    );
+    accountsList = await _accounts.listAccounts();
+    notifyListeners();
+    return account;
+  }
+
   // ---------------------------------------------------------------- notes
   Future<void> saveNote(SecureNote note, {bool isNew = false}) async {
     _touch();

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'create_account_screen.dart';
+import 'link_receive_screen.dart';
 
 /// First-run screen shown when the device has no accounts yet.
 class WelcomeScreen extends StatelessWidget {
@@ -56,6 +57,15 @@ class WelcomeScreen extends StatelessWidget {
                   ),
                   icon: const Icon(Icons.add),
                   label: const Text('Create your vault'),
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const LinkReceiveScreen()),
+                  ),
+                  icon: const Icon(Icons.qr_code_2),
+                  label: const Text('Link from another device'),
                 ),
               ],
             ),

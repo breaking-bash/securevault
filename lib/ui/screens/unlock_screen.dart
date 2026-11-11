@@ -5,6 +5,7 @@ import '../../models/account.dart';
 import '../../services/biometric_service.dart';
 import '../../state/vault_state.dart';
 import 'create_account_screen.dart';
+import 'link_receive_screen.dart';
 
 /// Account picker + master-password unlock screen (shown when ≥1 account exists).
 class UnlockScreen extends StatefulWidget {
@@ -182,6 +183,14 @@ class _UnlockScreenState extends State<UnlockScreen> {
                   ),
                   icon: const Icon(Icons.add),
                   label: const Text('Add another account'),
+                ),
+                TextButton.icon(
+                  onPressed: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const LinkReceiveScreen()),
+                  ),
+                  icon: const Icon(Icons.qr_code_2),
+                  label: const Text('Link from another device'),
                 ),
               ],
             ),

@@ -107,6 +107,23 @@ class AccountService {
     return account;
   }
 
+  /// Registers an account received from another device. Throws
+  /// [StateError] if this device already has it.
+  Future<LocalAccount> importAccount(LocalAccount account) async {
+    final all = await listAccounts();
+    if (all.any((a) => a.id == account.id)) {
+      throw StateError('This vault is already on this device.');
+    }
+    var name = account.name;
+    while (all.any((a) => a.name.trim().toLowerCase() == name.toLowerCase())) {
+      name = '$name (linked)';
+    }
+    final imported = account.copyWith(name: name);
+    all.add(imported);
+    await _writeAll(all);
+    return imported;
+  }
+
   Future<void> renameAccount(String id, String newName) async {
     final all = await listAccounts();
     final idx = all.indexWhere((a) => a.id == id);

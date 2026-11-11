@@ -172,6 +172,31 @@ class DatabaseService {
     await _require.delete('notes', where: 'id = ?', whereArgs: [id]);
   }
 
+  /// Writes already-encrypted rows into a fresh vault file (device linking).
+  Future<void> importRows({
+    required String path,
+    required List<Map<String, Object?>> folders,
+    required List<Map<String, Object?>> entries,
+    required List<Map<String, Object?>> notes,
+  }) async {
+    final db = await open(path);
+    await db.transaction((txn) async {
+      for (final r in folders) {
+        await txn.insert('folders', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in entries) {
+        await txn.insert('entries', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+      for (final r in notes) {
+        await txn.insert('notes', r,
+            conflictAlgorithm: ConflictAlgorithm.replace);
+      }
+    });
+    await close();
+  }
+
   // ---- bulk (used when re-encrypting on master-password change) ----------
   Future<void> replaceAllPayloads({
     required List<Map<String, Object?>> folders,
