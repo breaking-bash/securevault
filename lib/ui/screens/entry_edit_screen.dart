@@ -47,6 +47,9 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
     EntryFields.privateKey,
     EntryFields.fingerprint,
     EntryFields.passphrase,
+    EntryFields.rpId,
+    EntryFields.passkeyUser,
+    EntryFields.credentialId,
   ];
 
   @override
@@ -118,6 +121,13 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
           EntryFields.fingerprint,
           EntryFields.passphrase,
         ].contains(k);
+      case EntryType.passkey:
+        return const [
+          EntryFields.rpId,
+          EntryFields.passkeyUser,
+          EntryFields.credentialId,
+          EntryFields.privateKey,
+        ].contains(k);
       case EntryType.login:
         return false;
     }
@@ -157,6 +167,7 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
         EntryType.login => 'login',
         EntryType.card => 'credit card',
         EntryType.ssh => 'SSH key',
+        EntryType.passkey => 'passkey',
       };
 
   Widget _field(String key, String label, IconData icon,
@@ -220,6 +231,16 @@ class _EntryEditScreenState extends State<EntryEditScreen> {
           _field(EntryFields.passphrase, 'Key passphrase (optional)',
               Icons.password,
               secret: true),
+        ];
+      case EntryType.passkey:
+        return [
+          _field(EntryFields.rpId, 'Website (e.g. example.com)', Icons.language,
+              keyboard: TextInputType.url),
+          _field(EntryFields.passkeyUser, 'User name', Icons.person_outline),
+          _field(EntryFields.credentialId, 'Credential ID', Icons.badge_outlined,
+              mono: true),
+          _field(EntryFields.privateKey, 'Private key', Icons.lock_outline,
+              secret: true, maxLines: 6, mono: true),
         ];
       case EntryType.login:
         return const [];

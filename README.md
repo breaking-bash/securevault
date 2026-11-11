@@ -30,6 +30,12 @@ Everything is stored **only on your device** — there is no server, no cloud, n
 **Vault items**
 - **Logins** with: title, username/email, password, URL, notes, folder, optional TOTP secret, and created/updated timestamps.
 - **Secure notes** — free-form encrypted notes.
+- **Credit cards** — cardholder, number, expiry, CVV and PIN.
+- **SSH keys** — generate Ed25519 key pairs (OpenSSH format) or paste your own.
+- **Passkeys** — vault-stored passkey items (website, user, credential ID, private key). These are stored records only; SecureVault is not yet a system passkey provider.
+- **Watchtower** — flags weak, reused, old, HTTP and missing-2FA logins, and checks breaches via Have I Been Pwned (k-anonymity: only a 5-character SHA-1 prefix is sent).
+- **Secret Key** — a per-account 128-bit key (SV1-XXXXXX-...) mixed with the master password (Argon2id + HKDF), required on new devices. Existing accounts can enable it in Settings.
+- **Link another device** — QR-code pairing over the local network; the vault is sent encrypted (X25519 + AES-256-GCM), and the master password and Secret Key are never transmitted.
 - **Folders / categories** to organise items; filter the list by folder.
 - **Search** across titles, usernames, URLs and notes.
 

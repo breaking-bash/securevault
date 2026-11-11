@@ -138,6 +138,16 @@ class _VaultTabState extends State<_VaultTab> {
               },
             ),
             ListTile(
+              leading: const Icon(Icons.key),
+              title: const Text('Add passkey'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) =>
+                        const EntryEditScreen(newType: EntryType.passkey)));
+              },
+            ),
+            ListTile(
               leading: const Icon(Icons.sticky_note_2_outlined),
               title: const Text('Add secure note'),
               onTap: () {
@@ -447,6 +457,7 @@ class _EntryRow extends StatelessWidget {
               switch (entry.type) {
                 EntryType.card => Icons.credit_card_outlined,
                 EntryType.ssh => Icons.terminal_outlined,
+                EntryType.passkey => Icons.key,
                 EntryType.login => Icons.language_outlined,
               },
               color: scheme.onSurfaceVariant),

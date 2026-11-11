@@ -1,5 +1,5 @@
 /// Kinds of items a [VaultEntry] can represent.
-enum EntryType { login, card, ssh }
+enum EntryType { login, card, ssh, passkey }
 
 /// Keys used in [VaultEntry.extra] for non-login item types.
 class EntryFields {
@@ -12,6 +12,9 @@ class EntryFields {
   static const privateKey = 'privateKey';
   static const fingerprint = 'fingerprint';
   static const passphrase = 'passphrase';
+  static const rpId = 'rpId';
+  static const passkeyUser = 'passkeyUser';
+  static const credentialId = 'credentialId';
 }
 
 /// A login, credit card or SSH key stored in the vault.
@@ -46,6 +49,8 @@ class VaultEntry {
         return n.length >= 4 ? '•••• ${n.substring(n.length - 4)}' : '';
       case EntryType.ssh:
         return extra[EntryFields.fingerprint] ?? '';
+      case EntryType.passkey:
+        return extra[EntryFields.passkeyUser] ?? extra[EntryFields.rpId] ?? '';
     }
   }
 

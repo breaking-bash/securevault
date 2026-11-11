@@ -64,6 +64,15 @@ class _EntryDetailScreenState extends State<EntryDetailScreen> {
           _extraRow(e, EntryFields.passphrase, 'Passphrase', Icons.password,
               secret: true),
         ];
+      case EntryType.passkey:
+        return [
+          _extraRow(e, EntryFields.rpId, 'Website', Icons.language),
+          _extraRow(e, EntryFields.passkeyUser, 'User', Icons.person_outline),
+          _extraRow(e, EntryFields.credentialId, 'Credential ID', Icons.badge_outlined,
+              mono: true),
+          _extraRow(e, EntryFields.privateKey, 'Private key', Icons.lock_outline,
+              secret: true, mono: true),
+        ];
       case EntryType.login:
         return const [];
     }
